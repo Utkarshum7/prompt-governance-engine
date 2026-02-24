@@ -1,0 +1,2 @@
+*.wp_target filter=lfs diff=lfs merge=lfs -text
+*.wp_source filter=lfs diff=lfs merge=lfs -text

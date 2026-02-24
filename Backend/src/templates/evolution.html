@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}Prompt Evolution{% endblock %}
+
+{% block content %}
+<h1>Prompt Evolution & Family Tracking</h1>
+<p>View how prompts evolve over time and track prompt families</p>
+
+<div class="filters" style="margin: 1rem 0;">
+    <a href="/evolution" class="btn">All Events</a>
+    <a href="/evolution/families" class="btn">View Families</a>
+    <a href="/" class="btn">Back to Home</a>
+</div>
+
+<h2>Evolution Events</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Event ID</th>
+            <th>Type</th>
+            <th>Template</th>
+            <th>Previous Version</th>
+            <th>New Version</th>
+            <th>Reason</th>
+            <th>Detected By</th>
+            <th>Created</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% if events %}
+            {% for event in events %}
+            <tr>
+                <td><code>{{ event.id[:8] }}...</code></td>
+                <td><span class="event-type event-{{ event.event_type.lower() }}">{{ event.event_type }}</span></td>
+                <td><code>{{ event.template_id[:8] }}...</code></td>
+                <td>{{ event.previous_version or 'N/A' }}</td>
+                <td>{{ event.new_version or 'N/A' }}</td>
+                <td>{{ event.change_reason[:50] + '...' if event.change_reason and event.change_reason|length > 50 else (event.change_reason or 'N/A') }}</td>
+                <td>{{ event.detected_by or 'System' }}</td>
+                <td>{{ event.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+            </tr>
+            {% endfor %}
+        {% else %}
+            <tr>
+                <td colspan="8" style="text-align: center; padding: 2rem;">
+                    No evolution events found yet.
+                </td>
+            </tr>
+        {% endif %}
+    </tbody>
+</table>
+
+{% if total > page_size %}
+<div class="pagination">
+    {% if page > 1 %}
+    <a href="?page={{ page - 1 }}">Previous</a>
+    {% endif %}
+    
+    <span class="active">Page {{ page }} of {{ (total / page_size)|round|int + 1 }}</span>
+    
+    {% if page * page_size < total %}
+    <a href="?page={{ page + 1 }}">Next</a>
+    {% endif %}
+</div>
+{% endif %}
+
+<style>
+.event-type {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.event-created {
+    background: #d4edda;
+    color: #155724;
+}
+
+.event-updated {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+.event-slot_added {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.event-slot_removed {
+    background: #f8d7da;
+    color: #721c24;
+}
+</style>
+{% endblock %}
+

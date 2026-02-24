@@ -1,0 +1,127 @@
+---
+alwaysApply: true
+---
+
+# Smart Prompt Parser & Canonicalisation Engine — Track-Specific Rules
+
+## 1. Semantic-First Processing (Never String Matching)
+- Never rely on raw string similarity, edit distance, or naive hashing for grouping.
+- Always use:
+  - embeddings
+  - semantic similarity scores
+  - LLM-based equivalence checks
+- Treat prompts as meaning representations, not text blobs.
+
+## 2. Canonical Prompt Family Abstraction
+- Every cluster must produce:
+  - a canonical template
+  - variable slots
+  - example instantiations
+- Templates must:
+  - preserve instruction intent
+  - minimize redundancy
+  - normalize phrasing while keeping semantics stable.
+
+## 3. Slot Extraction Rules
+- Variable extraction must:
+  - identify dynamic entities (names, numbers, topics, formats)
+  - replace them with typed placeholders (eg: {{topic}}, {{tone}}, {{length}})
+- Always store:
+  - slot name
+  - inferred type
+  - example values
+  - confidence score
+
+## 4. Explainable Clustering Is Mandatory
+- Every merge decision must store:
+  - similarity score
+  - reasoning summary (LLM or heuristic)
+  - features considered
+- No black-box clustering.
+- System must be able to answer:
+  "Why were these prompts grouped?"
+
+## 5. Incremental Processing Only
+- New prompts must be processed incrementally:
+  - never recluster entire dataset
+  - reuse existing embeddings and cluster centroids
+- Support:
+  - append-only ingestion
+  - re-evaluation only when thresholds are crossed.
+
+## 6. Confidence-Gated Merges
+- Never auto-merge below confidence threshold.
+- Implement:
+  - high-confidence auto merge
+  - medium-confidence review queue
+  - low-confidence rejection
+- Thresholds must be configurable.
+
+## 7. Evolution Tracking Is First-Class
+- Track:
+  - new prompt families
+  - new slot patterns
+  - semantic drift inside clusters
+- Store version history for each canonical template.
+
+## 8. Canonical Template Versioning
+- Do not overwrite templates.
+- Always:
+  - version templates
+  - store change reason
+  - record what changed (slots added, removed, reworded).
+
+## 9. Embedding & Model Independence
+- Never hardcode a single model dependency.
+- Abstract:
+  - embedding provider
+  - similarity function
+  - verifier model
+- Allow easy model swapping.
+
+## 10. Deterministic Output Contracts
+- All outputs must be structured JSON:
+  - cluster_id
+  - canonical_template
+  - slots
+  - confidence
+  - explanation
+  - version
+- No free-text-only results.
+
+## 11. Drift & Duplicate Detection
+- Detect:
+  - near-duplicate families
+  - overlapping slot structures
+  - template collapse risks
+- Surface conflicts instead of auto-fixing.
+
+## 12. Evaluation Hooks Are Required
+- Build hooks to measure:
+  - cluster purity
+  - merge accuracy
+  - false merge rate
+- Always log sample cluster audits.
+
+## 13. Performance Scaling Rules
+- Design for thousands → millions of prompts.
+- Use:
+  - batch embedding
+  - vector index (FAISS / HNSW)
+  - async ingestion pipelines
+- Avoid O(N²) operations.
+
+## 14. Human Review Compatibility
+- Design outputs to be reviewable:
+  - readable templates
+  - explainable merge reasoning
+  - slot previews
+- Support manual override hooks.
+
+## 15. Judge-Oriented Thinking
+Always optimize for:
+- explainability > fancy UI
+- correctness > clustering speed
+- traceability > raw accuracy
+
+If a decision cannot be explained — it is wrong.

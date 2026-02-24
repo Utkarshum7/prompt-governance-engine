@@ -1,0 +1,213 @@
+# Configuration Template for Smart Prompt Parser & Canonicalisation Engine
+# 
+# This file serves as a template for the actual configuration file.
+# Copy this file to config.yaml and fill in your actual values.
+# 
+# IMPORTANT: config.yaml is gitignored and should NEVER be committed to the repository.
+# Use environment variables or AWS Secrets Manager for production secrets.
+
+# Portkey AI Configuration
+# Portkey AI SDK configuration for model access and routing
+portkey:
+  # Portkey API key - Load from environment variable PORTKEY_API_KEY or AWS Secrets Manager
+  api_key: "${PORTKEY_API_KEY}"
+  # Base URL for Portkey API
+  base_url: "https://api.portkey.ai"
+  # Request timeout in seconds
+  timeout: 30
+  # Number of retry attempts for failed API calls
+  retry_attempts: 3
+
+# Model Configurations
+# Configuration for all AI models used in the system
+models:
+  # Embedding model configuration
+  embedding:
+    # Primary embedding model for semantic clustering
+    primary: "@openai/text-embedding-3-small"
+    # Fallback embedding model for long/complex prompts (>8k tokens)
+    fallback: "@openai/text-embedding-3-large"
+    # Batch size for embedding generation (50-200 recommended)
+    batch_size: 100
+  
+  # Canonicalization model configuration
+  canonicalization:
+    # Primary model for template extraction
+    primary: "@openai/gpt-4o-2024-08-06"
+    # Alternative model for code-heavy prompts
+    alternative: "@anthropic/claude-3-5-sonnet-latest"
+    # Maximum tokens for template extraction responses
+    max_tokens: 2000
+    # Temperature for template extraction (low for consistency)
+    temperature: 0.1
+  
+  # Reasoning model configuration
+  reasoning:
+    # Model for edge case reasoning and drift detection
+    model: "@openai/o1-mini"
+    # Maximum tokens for reasoning responses
+    max_tokens: 1000
+  
+  # Moderation model configuration
+  moderation:
+    # Model for content moderation and safety checks
+    model: "@openai/omni-moderation-latest"
+
+# AWS Configuration
+# AWS services configuration for deployment and infrastructure
+aws:
+  # Default AWS region
+  region: "us-east-2"
+  
+  # ECR (Elastic Container Registry) configuration
+  ecr:
+    # ECR repository URL for Docker images
+    repository: "429441944860.dkr.ecr.us-east-2.amazonaws.com/portkeyaibuilderchallenge"
+    # ECR region
+    region: "us-east-2"
+  
+  # S3 configuration
+  s3:
+    # S3 bucket name for artifacts and backups - Load from environment variable S3_BUCKET_NAME
+    bucket: "${S3_BUCKET_NAME}"
+    # S3 region
+    region: "us-east-2"
+  
+  # AWS Secrets Manager configuration
+  secrets_manager:
+    # Enable AWS Secrets Manager integration
+    enabled: true
+    # Secret name in AWS Secrets Manager
+    secret_name: "portkey-prompt-parser/secrets"
+
+# Database Configuration
+# Configuration for all database connections
+database:
+  # PostgreSQL configuration (primary database)
+  postgresql:
+    # Database host - Load from environment variable DB_HOST (default: localhost for Docker)
+    host: "${DB_HOST:-localhost}"
+    # Database port
+    port: 5432
+    # Database name - Load from environment variable DB_NAME (default: portkey_prompt_parser)
+    database: "${DB_NAME:-portkey_prompt_parser}"
+    # Database username - Load from environment variable DB_USER (default: postgres)
+    username: "${DB_USER:-postgres}"
+    # Database password - Load from environment variable DB_PASSWORD or AWS Secrets Manager (default: postgres)
+    password: "${DB_PASSWORD:-postgres}"
+    # SSL mode for secure connections (disable for local Docker, require for production)
+    ssl_mode: "${DB_SSL_MODE:-disable}"
+    # Connection pool size
+    pool_size: 20
+    # Maximum overflow connections
+    max_overflow: 10
+  
+  # Redis configuration (caching layer)
+  redis:
+    # Redis host - Load from environment variable REDIS_HOST (default: localhost for Docker)
+    host: "${REDIS_HOST:-localhost}"
+    # Redis port
+    port: 6379
+    # Redis password - Load from environment variable REDIS_PASSWORD or AWS Secrets Manager (optional)
+    password: "${REDIS_PASSWORD:-}"
+    # Redis database number
+    db: 0
+    # Decode responses as strings
+    decode_responses: true
+  
+  # Vector Database configuration
+  vector_db:
+    # Vector DB type: qdrant, elasticsearch, or pinecone
+    type: "qdrant"
+    
+    # Qdrant configuration (if type is qdrant)
+    qdrant:
+      # Qdrant host - Load from environment variable QDRANT_HOST (default: localhost for Docker)
+      host: "${QDRANT_HOST:-localhost}"
+      # Qdrant port
+      port: 6333
+      # Qdrant API key - Load from environment variable QDRANT_API_KEY (optional for local)
+      api_key: "${QDRANT_API_KEY:-}"
+    
+    # Elasticsearch configuration (if type is elasticsearch)
+    elasticsearch:
+      # Elasticsearch host - Load from environment variable ELASTICSEARCH_HOST
+      host: "${ELASTICSEARCH_HOST}"
+      # Elasticsearch port
+      port: 9200
+      # Elasticsearch username - Load from environment variable ELASTICSEARCH_USER
+      username: "${ELASTICSEARCH_USER}"
+      # Elasticsearch password - Load from environment variable ELASTICSEARCH_PASSWORD
+      password: "${ELASTICSEARCH_PASSWORD}"
+    
+    # Pinecone configuration (if type is pinecone)
+    pinecone:
+      # Pinecone API key - Load from environment variable PINECONE_API_KEY
+      api_key: "${PINECONE_API_KEY}"
+      # Pinecone environment - Load from environment variable PINECONE_ENVIRONMENT
+      environment: "${PINECONE_ENVIRONMENT}"
+      # Pinecone index name - Load from environment variable PINECONE_INDEX_NAME
+      index_name: "${PINECONE_INDEX_NAME}"
+
+# Application Configuration
+# Core application settings
+app:
+  # Environment: dev, staging, or prod - Load from environment variable ENV
+  environment: "${ENV}"
+  # Log level: DEBUG, INFO, WARNING, ERROR - Load from environment variable LOG_LEVEL
+  log_level: "${LOG_LEVEL}"
+  
+  # API server configuration
+  api:
+    # API host address
+    host: "0.0.0.0"
+    # API port
+    port: 8000
+    # Rate limit per minute per API key
+    rate_limit_per_minute: 100
+    # Maximum request size in MB
+    max_request_size_mb: 10
+  
+  # Clustering configuration
+  clustering:
+    # Similarity threshold for cluster assignment (0.0-1.0)
+    similarity_threshold: 0.85
+    # Confidence threshold for cluster merges (0.0-1.0)
+    confidence_threshold: 0.85
+    # Batch size for clustering operations
+    batch_size: 100
+    # Maximum number of prompts per cluster
+    max_cluster_size: 1000
+  
+  # Processing configuration
+  processing:
+    # Number of concurrent workers
+    worker_concurrency: 4
+    # Batch size for processing operations
+    batch_size: 100
+    # Maximum retry attempts for failed operations
+    max_retries: 3
+    # Backoff delay in seconds between retries
+    retry_backoff_seconds: 2
+
+# Observability Configuration
+# Logging, metrics, and monitoring configuration
+observability:
+  # CloudWatch configuration
+  cloudwatch:
+    # Enable CloudWatch logging
+    enabled: true
+    # CloudWatch log group name
+    log_group: "/aws/ecs/portkey-prompt-parser"
+    # CloudWatch region
+    region: "us-east-2"
+  
+  # Metrics configuration
+  metrics:
+    # Enable Prometheus metrics
+    enabled: true
+    # Metrics endpoint path
+    endpoint: "/metrics"
+    # Metrics port
+    port: 9090
+

@@ -1,0 +1,65 @@
+{
+  "family": "portkey-prompt-parser",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::429441944860:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::429441944860:role/ecsTaskRole",
+  "containerDefinitions": [
+    {
+      "name": "portkey-prompt-parser",
+      "image": "429441944860.dkr.ecr.us-east-2.amazonaws.com/portkeyaibuilderchallenge:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "ENV",
+          "value": "prod"
+        },
+        {
+          "name": "LOG_LEVEL",
+          "value": "INFO"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "PORTKEY_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:429441944860:secret:portkey-prompt-parser/secrets:PORTKEY_API_KEY::"
+        },
+        {
+          "name": "DB_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:429441944860:secret:portkey-prompt-parser/secrets:DB_PASSWORD::"
+        },
+        {
+          "name": "REDIS_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:429441944860:secret:portkey-prompt-parser/secrets:REDIS_PASSWORD::"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/aws/ecs/portkey-prompt-parser",
+          "awslogs-region": "us-east-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "python -c \"import httpx; httpx.get('http://localhost:8000/health', timeout=5)\" || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 40
+      }
+    }
+  ]
+}
+

@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Cluster Details{% endblock %}
+
+{% block content %}
+<h1>Cluster Details</h1>
+
+<div class="cluster-info">
+    <h2>{{ cluster.name or 'Unnamed Cluster' }}</h2>
+    <p><strong>Cluster ID:</strong> <code>{{ cluster.id }}</code></p>
+    <p><strong>Confidence Score:</strong> {{ "%.2f"|format(cluster.confidence_score) if cluster.confidence_score else 'N/A' }}</p>
+    <p><strong>Created:</strong> {{ cluster.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+    <p><strong>Prompts in Cluster:</strong> {{ prompts|length }}</p>
+</div>
+
+<div class="actions" style="margin: 1rem 0;">
+    <a href="/clusters" class="btn">Back to Clusters</a>
+    <a href="/templates?cluster_id={{ cluster.id }}" class="btn">View Template</a>
+</div>
+
+<h3>Prompts in this Cluster</h3>
+<div class="prompts-list">
+    {% if prompts %}
+        {% for prompt in prompts %}
+        <div class="prompt-card">
+            <div class="prompt-header">
+                <strong>Prompt ID:</strong> <code>{{ prompt.id[:8] }}...</code>
+                <span class="timestamp">{{ prompt.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+            </div>
+            <div class="prompt-content">{{ prompt.content[:500] }}{% if prompt.content|length > 500 %}...{% endif %}</div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p>No prompts in this cluster yet.</p>
+    {% endif %}
+</div>
+
+<style>
+.cluster-info {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+}
+
+.prompts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.prompt-card {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.prompt-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.prompt-content {
+    padding: 0.5rem;
+    background: #f8f9fa;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.timestamp {
+    color: #999;
+}
+</style>
+{% endblock %}
+

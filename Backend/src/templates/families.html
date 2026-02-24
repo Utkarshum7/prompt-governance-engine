@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Prompt Families{% endblock %}
+
+{% block content %}
+<h1>Prompt Families</h1>
+<p>View prompt families and their relationships</p>
+
+<div class="filters" style="margin: 1rem 0;">
+    <a href="/evolution" class="btn">Back to Evolution</a>
+    <a href="/" class="btn">Back to Home</a>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>Family ID</th>
+            <th>Name</th>
+            <th>Description</th>
+            <th>Parent Family</th>
+            <th>Clusters</th>
+            <th>Created</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% if families %}
+            {% for family in families %}
+            <tr>
+                <td><code>{{ family.id[:8] }}...</code></td>
+                <td><strong>{{ family.name }}</strong></td>
+                <td>{{ family.description or 'N/A' }}</td>
+                <td>
+                    {% if family.parent_family_id %}
+                        <code>{{ family.parent_family_id[:8] }}...</code>
+                    {% else %}
+                        Root Family
+                    {% endif %}
+                </td>
+                <td>{{ family.cluster_count or 0 }}</td>
+                <td>{{ family.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+            </tr>
+            {% endfor %}
+        {% else %}
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 2rem;">
+                    No prompt families found yet.
+                </td>
+            </tr>
+        {% endif %}
+    </tbody>
+</table>
+{% endblock %}
+

@@ -1,0 +1,89 @@
+{
+  "spec_id": "SPEC-2025-001",
+  "jira_id": "PE-9999",
+  "invoked_by": "user",
+  "cursor_version": "unknown",
+  "files_changed": [],
+  "tests_generated": [],
+  "tests_run": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0,
+    "coverage": "0%"
+  },
+  "timestamp": "2025-01-27T00:00:00Z",
+  "implementation_summary": "",
+  "branch": "spec/PE-9999-smart-prompt-parser-canonicalisation-engine",
+  "approvals": {
+    "spec": {
+      "status": "approved",
+      "approved_by": "user",
+      "approved_at": "2025-01-27T00:00:00Z"
+    },
+    "plan": {
+      "status": "approved",
+      "approved_by": "user",
+      "approved_at": "2025-01-27T00:00:00Z"
+    },
+    "tasks": {
+      "status": "pending",
+      "approved_by": null,
+      "approved_at": null
+    },
+    "pre_commit": {
+      "status": "pending",
+      "approved_by": null,
+      "approved_at": null
+    },
+    "commit_message": {
+      "status": "pending",
+      "approved_by": null,
+      "approved_at": null,
+      "final_message": null
+    }
+  },
+  "external_dependencies": {
+    "flagsmith": [],
+    "consul": [],
+    "environment_variables": [
+      "PORTKEY_API_KEY",
+      "DB_HOST",
+      "DB_NAME",
+      "DB_USER",
+      "DB_PASSWORD",
+      "REDIS_HOST",
+      "REDIS_PASSWORD",
+      "QDRANT_HOST",
+      "QDRANT_API_KEY",
+      "AWS_REGION",
+      "AWS_ACCESS_KEY_ID",
+      "AWS_SECRET_ACCESS_KEY",
+      "S3_BUCKET_NAME",
+      "AWS_SECRETS_MANAGER_SECRET_NAME",
+      "ENV",
+      "LOG_LEVEL",
+      "API_KEY"
+    ],
+    "database_migrations": [
+      "001_initial_schema.py - Creates 8 tables: prompts, clusters, cluster_assignments, canonical_templates, template_slots, evolution_events, prompt_families, family_cluster_mappings"
+    ],
+    "third_party_services": [
+      {
+        "service": "Portkey AI",
+        "api_key_location": "AWS Secrets Manager",
+        "models": ["text-embedding-3-small", "text-embedding-3-large", "gpt-4o-2024-08-06", "claude-3-5-sonnet-latest", "o1-mini", "text-moderation-latest"]
+      },
+      {
+        "service": "AWS",
+        "access_key_id": "AKIAWH7F4BUOKM2W2SFO",
+        "credentials_location": "AWS Secrets Manager",
+        "services": ["ECR", "ECS/EKS", "RDS", "ElastiCache", "S3", "CloudWatch", "Secrets Manager"]
+      },
+      {
+        "service": "Qdrant",
+        "deployment": "Docker container (local) or Cloud (production)"
+      }
+    ]
+  }
+}
+

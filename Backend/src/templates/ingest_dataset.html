@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Ingest Dataset - Smart Prompt Parser{% endblock %}
+
+{% block content %}
+<h1>Dataset Ingestion</h1>
+
+<p>Process all prompts from the Dataset folder through the full pipeline.</p>
+
+<button id="start-ingestion" onclick="startIngestion()">Start Dataset Ingestion</button>
+
+<div id="progress" style="margin-top: 2rem; display: none;">
+    <div class="alert alert-info">
+        <p>Processing dataset files...</p>
+        <div id="progress-details"></div>
+    </div>
+</div>
+
+<div id="result" style="margin-top: 2rem; display: none;"></div>
+
+<script>
+async function startIngestion() {
+    const startButton = document.getElementById('start-ingestion');
+    const progressDiv = document.getElementById('progress');
+    const progressDetails = document.getElementById('progress-details');
+    const resultDiv = document.getElementById('result');
+    
+    startButton.disabled = true;
+    progressDiv.style.display = 'block';
+    resultDiv.style.display = 'none';
+    progressDetails.innerHTML = 'Initializing...';
+    
+    try {
+        const response = await fetch('/api/v1/dataset/ingest', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const data = await response.json();
+        
+        progressDiv.style.display = 'none';
+        resultDiv.style.display = 'block';
+        
+        if (response.ok && data.status === 'completed') {
+            const summary = data.summary || {};
+            resultDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <h3>Dataset Ingestion Completed!</h3>
+                    <p><strong>Files Processed:</strong> ${summary.files_processed || 0}</p>
+                    <p><strong>Files Failed:</strong> ${summary.files_failed || 0}</p>
+                    <p><strong>Prompts Processed:</strong> ${summary.prompts_processed || 0}</p>
+                    <p><strong>Prompts Accepted:</strong> ${summary.prompts_accepted || 0}</p>
+                    <p><strong>Prompts Rejected:</strong> ${summary.prompts_rejected || 0}</p>
+                    ${summary.error_count > 0 ? `<p><strong>Errors:</strong> ${summary.error_count}</p>` : ''}
+                </div>
+            `;
+        } else {
+            resultDiv.innerHTML = `
+                <div class="alert alert-error">
+                    <h3>Error</h3>
+                    <p>${data.detail?.error || 'Failed to ingest dataset'}</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        progressDiv.style.display = 'none';
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = `
+            <div class="alert alert-error">
+                <h3>Error</h3>
+                <p>${error.message}</p>
+            </div>
+        `;
+    } finally {
+        startButton.disabled = false;
+    }
+}
+</script>
+{% endblock %}
+

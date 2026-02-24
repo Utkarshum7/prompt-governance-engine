@@ -1,0 +1,145 @@
+---
+alwaysApply: true
+---
+# Portkey AI Builders Challenge — Mandatory Engineering Rules
+
+## 1. Production-First Mentality
+- Always design systems assuming they will run continuously for months without manual intervention.
+- Prefer long-running services, schedulers, workers, and pipelines over one-shot scripts.
+- Every component must support restartability and idempotency.
+
+## 2. State Is Mandatory
+- Never treat data as stateless unless explicitly required.
+- Persist:
+  - processing checkpoints
+  - last-run timestamps
+  - versioned outputs
+  - metadata about sources and verification time
+- Avoid reprocessing unchanged data. Use hashes, timestamps, or semantic fingerprints.
+
+## 3. Freshness & Change Detection
+- Implement logic to detect:
+  - semantic changes (not only text diffs)
+  - stale data
+  - source inconsistencies
+- Always store:
+  - last_verified_at
+  - data_source
+  - confidence_score (even heuristic-based)
+
+## 4. Failure-Resilient Architecture
+- All network calls and LLM calls must include:
+  - retries with backoff
+  - timeout handling
+  - graceful fallbacks
+- Never crash the full pipeline due to single-source failure.
+- Log and surface partial failures.
+
+## 5. Observability Over UI
+- Prioritize:
+  - structured logging
+  - metrics (cost, latency, error rate)
+  - traceable decision steps
+- Always expose:
+  - why a decision was made
+  - which model/tool was used
+  - what inputs were considered
+
+## 6. Explicit Trade-Offs
+- Every major design choice must document:
+  - cost vs quality
+  - latency vs accuracy
+  - automation vs safety
+- Prefer configurable thresholds instead of hardcoded values.
+
+## 7. Heavy AI Usage Is Encouraged
+- Use LLMs for:
+  - planning
+  - validation
+  - semantic diffing
+  - clustering
+  - classification
+  - verification
+- If a task can be automated with AI, automate it.
+- Prefer multi-step agent pipelines over single prompt calls.
+
+## 8. Multi-Agent & Verification Patterns
+- When possible:
+  - separate generator and verifier models
+  - use critic agents for quality checks
+- Never blindly trust a single LLM output for critical decisions.
+
+## 9. Deterministic Outputs Where Needed
+- For production logic:
+  - enforce schemas
+  - validate outputs
+  - reject malformed responses
+- Use JSON schemas or strict parsing.
+
+## 10. Incremental Processing Only
+- Systems must support:
+  - incremental updates
+  - partial recomputation
+  - append-only histories
+- Avoid full reprocessing unless explicitly necessary.
+
+## 11. Machine-Readable Outputs
+- All final system outputs must be:
+  - exportable as JSON
+  - structured
+  - versioned
+- Avoid free-text-only outputs.
+
+## 12. Engineering Quality Standards
+- Modular architecture:
+  - ingestion
+  - processing
+  - storage
+  - evaluation
+  - serving
+- Avoid monolithic scripts.
+- Prefer clear interfaces between components.
+
+## 13. Safety & Guardrails
+- Validate inputs and outputs.
+- Detect:
+  - malformed data
+  - hallucinated fields
+  - conflicting information
+- Surface conflicts instead of overwriting silently.
+
+## 14. No Demo-Only Logic
+- Avoid:
+  - hardcoded samples
+  - mocked flows
+  - fake loops
+- All logic must be realistic and extensible.
+
+## 15. Documentation Discipline
+- Every module must include:
+  - purpose
+  - inputs/outputs
+  - failure modes
+- Keep README production-oriented, not marketing-oriented.
+
+## 16. Performance Awareness
+- Track:
+  - token usage
+  - API cost
+  - processing time
+- Prefer batching where possible.
+
+## 17. Portkey-Native Thinking
+- When relevant:
+  - use Portkey for routing
+  - enable logging
+  - leverage retries and guardrails
+- Do not rebuild plumbing that Portkey already provides.
+
+## 18. Default Mindset
+Always ask:
+- Would this survive production load?
+- Would this recover after a crash?
+- Would an enterprise trust this?
+
+If not — redesign.

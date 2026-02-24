@@ -1,0 +1,63 @@
+{
+  "spec_id": "SPEC-2025-001",
+  "jira_id": "PE-9999",
+  "title": "Smart Prompt Parser & Canonicalisation Engine",
+  "status": "approved",
+  "date": "2025-01-27",
+  "kb_chunk": {
+    "type": "feature_specification",
+    "domain": "ai_platform",
+    "subdomain": "prompt_intelligence",
+    "feature": "prompt_parser_canonicalisation",
+    "summary": "Production-grade system for clustering semantically equivalent prompts, extracting canonical templates with variable slots, and tracking prompt family evolution. Designed for AWS cloud deployment, scalable to 100k+ prompts.",
+    "keywords": [
+      "prompt clustering",
+      "semantic similarity",
+      "canonical templates",
+      "variable extraction",
+      "prompt evolution",
+      "vector database",
+      "embedding",
+      "AWS deployment",
+      "Portkey AI",
+      "incremental processing"
+    ],
+    "technical_details": {
+      "architecture": "three_layer_ai",
+      "layers": [
+        "retrieval_vector_db",
+        "intelligence_embedding_clustering",
+        "knowledge_graph_lineage"
+      ],
+      "models": {
+        "embedding": "@openai/text-embedding-3-small",
+        "canonicalization": "@openai/gpt-4o-2024-08-06",
+        "reasoning": "@openai/o1-mini",
+        "moderation": "@openai/text-moderation-latest"
+      },
+      "storage": {
+        "primary_db": "PostgreSQL",
+        "vector_db": "Qdrant/Elastic/Pinecone",
+        "cache": "Redis",
+        "artifacts": "S3"
+      },
+      "deployment": "AWS ECS/EKS"
+    },
+    "business_value": {
+      "problem": "Manual prompt management, duplicate prompt detection, template extraction",
+      "solution": "Automated semantic clustering and canonical template generation",
+      "impact": "Reduced prompt redundancy, improved template reuse, evolution tracking"
+    },
+    "dependencies": [
+      "Portkey AI API",
+      "AWS ECR",
+      "PostgreSQL database",
+      "Redis cache",
+      "Vector DB (Qdrant/Elastic/Pinecone)",
+      "S3 storage"
+    ],
+    "related_specs": [],
+    "implementation_status": "approved"
+  }
+}
+

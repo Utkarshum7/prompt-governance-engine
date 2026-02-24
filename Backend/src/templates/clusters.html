@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Prompt Clusters{% endblock %}
+
+{% block content %}
+<h1>Prompt Clusters</h1>
+<p>View semantically equivalent prompts grouped into clusters</p>
+
+<div class="filters" style="margin: 1rem 0;">
+    <a href="/clusters" class="btn">All Clusters</a>
+    <a href="/" class="btn">Back to Home</a>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>Cluster ID</th>
+            <th>Name</th>
+            <th>Prompts</th>
+            <th>Confidence</th>
+            <th>Created</th>
+            <th>Sample Prompt</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% if clusters %}
+            {% for cluster in clusters %}
+            <tr>
+            <td><code>{{ cluster.id[:8] }}...</code></td>
+            <td>{{ cluster.name or 'Unnamed' }}</td>
+            <td>{{ cluster.prompt_count or 0 }}</td>
+            <td>{{ "%.2f"|format(cluster.confidence_score) if cluster.confidence_score else 'N/A' }}</td>
+            <td>{{ cluster.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td class="sample-prompt">{{ cluster.sample_prompt }}</td>
+            <td><a href="/clusters/{{ cluster.id }}">View Details</a></td>
+            </tr>
+            {% endfor %}
+        {% else %}
+            <tr>
+                <td colspan="7" style="text-align: center; padding: 2rem;">
+                    No clusters found. Submit some prompts to get started!
+                </td>
+            </tr>
+        {% endif %}
+    </tbody>
+</table>
+
+{% if total > page_size %}
+<div class="pagination">
+    {% if page > 1 %}
+    <a href="?page={{ page - 1 }}">Previous</a>
+    {% endif %}
+    
+    <span class="active">Page {{ page }} of {{ (total / page_size)|round|int + 1 }}</span>
+    
+    {% if page * page_size < total %}
+    <a href="?page={{ page + 1 }}">Next</a>
+    {% endif %}
+</div>
+{% endif %}
+
+<style>
+.sample-prompt {
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.9rem;
+    color: #666;
+}
+</style>
+{% endblock %}

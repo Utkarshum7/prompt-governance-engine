@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block title %}Smart Prompt Parser{% endblock %}
+
+{% block content %}
+<h1>Smart Prompt Parser & Canonicalisation Engine</h1>
+
+<div class="description">
+    <p>Analyze prompts to:</p>
+    <ul>
+        <li>Cluster semantically equivalent prompts</li>
+        <li>Extract prompt templates with variable slots</li>
+        <li>Detect prompt evolution and new families</li>
+    </ul>
+</div>
+
+<div class="main-actions">
+    <div class="action-card">
+        <h2>Submit Prompt</h2>
+        <p>Submit a single prompt for parsing and clustering</p>
+        <form method="POST" action="/api/v1/prompts" id="prompt-form">
+            <div class="form-group">
+                <label for="prompt-content">Prompt:</label>
+                <textarea id="prompt-content" name="content" required placeholder="Enter your prompt here..."></textarea>
+            </div>
+            <button type="submit">Parse Prompt</button>
+        </form>
+        <div id="prompt-result" style="margin-top: 1rem; display: none;"></div>
+    </div>
+
+    <div class="action-card">
+        <h2>Process Dataset</h2>
+        <p>Process all prompts from the Dataset folder</p>
+        <button onclick="processDataset()" id="dataset-btn">Start Dataset Processing</button>
+        <div id="dataset-result" style="margin-top: 1rem; display: none;"></div>
+    </div>
+</div>
+
+<div class="view-section">
+    <h2>View Results</h2>
+    <div class="view-options">
+        <a href="/clusters" class="view-link">
+            <h3>Clusters</h3>
+            <p>View semantically equivalent prompt clusters</p>
+        </a>
+        <a href="/templates" class="view-link">
+            <h3>Templates</h3>
+            <p>View canonical templates with variable slots</p>
+        </a>
+        <a href="/evolution" class="view-link">
+            <h3>Evolution</h3>
+            <p>View prompt family evolution and changes</p>
+        </a>
+    </div>
+</div>
+
+<script>
+document.getElementById('prompt-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const content = document.getElementById('prompt-content').value;
+    const resultDiv = document.getElementById('prompt-result');
+    resultDiv.style.display = 'block';
+    resultDiv.innerHTML = '<div class="alert alert-info">Processing prompt...</div>';
+    
+    try {
+        const response = await fetch('/api/v1/prompts', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ content: content })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            resultDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <h4>Prompt Processed Successfully!</h4>
+                    <p><strong>Prompt ID:</strong> ${data.prompt_id}</p>
+                    ${data.cluster_id ? `<p><strong>Assigned to Cluster:</strong> <a href="/clusters/${data.cluster_id}">${data.cluster_id}</a></p>` : ''}
+                    ${data.similarity_score !== null ? `<p><strong>Similarity Score:</strong> ${data.similarity_score.toFixed(3)}</p>` : ''}
+                    ${data.confidence_score !== null ? `<p><strong>Confidence:</strong> ${data.confidence_score.toFixed(3)}</p>` : ''}
+                    ${data.reasoning ? `<p><strong>Reasoning:</strong> ${data.reasoning}</p>` : ''}
+                    ${data.is_new_cluster ? '<p><em>✓ New cluster created</em></p>' : ''}
+                </div>
+            `;
+            document.getElementById('prompt-content').value = '';
+        } else {
+            resultDiv.innerHTML = `
+                <div class="alert alert-error">
+                    <h4>Error</h4>
+                    <p>${data.detail?.error || 'Failed to process prompt'}</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `
+            <div class="alert alert-error">
+                <h4>Error</h4>
+                <p>${error.message}</p>
+            </div>
+        `;
+    }
+});
+
+async function processDataset() {
+    const btn = document.getElementById('dataset-btn');
+    const resultDiv = document.getElementById('dataset-result');
+    
+    btn.disabled = true;
+    resultDiv.style.display = 'block';
+    resultDiv.innerHTML = '<div class="alert alert-info">Processing dataset files...</div>';
+    
+    try {
+        const response = await fetch('/api/v1/dataset/ingest', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.status === 'completed') {
+            const summary = data.summary || {};
+            resultDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <h4>Dataset Processing Completed!</h4>
+                    <p><strong>Files Processed:</strong> ${summary.files_processed || 0}</p>
+                    <p><strong>Prompts Processed:</strong> ${summary.prompts_processed || 0}</p>
+                    <p><strong>Prompts Accepted:</strong> ${summary.prompts_accepted || 0}</p>
+                    <p><strong>Prompts Rejected:</strong> ${summary.prompts_rejected || 0}</p>
+                    <p><strong>Clusters Created:</strong> ${summary.clusters_created || 0}</p>
+                    <p><strong>Templates Extracted:</strong> ${summary.templates_extracted || 0}</p>
+                </div>
+            `;
+        } else {
+            resultDiv.innerHTML = `
+                <div class="alert alert-error">
+                    <h4>Error</h4>
+                    <p>${data.detail?.error || 'Failed to process dataset'}</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `
+            <div class="alert alert-error">
+                <h4>Error</h4>
+                <p>${error.message}</p>
+            </div>
+        `;
+    } finally {
+        btn.disabled = false;
+    }
+}
+</script>
+
+<style>
+.main-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin: 2rem 0;
+}
+
+.action-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.view-section {
+    margin-top: 3rem;
+}
+
+.view-options {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+.view-link {
+    display: block;
+    padding: 1.5rem;
+    background: white;
+    border: 2px solid #3498db;
+    border-radius: 8px;
+    text-decoration: none;
+    color: #333;
+    transition: all 0.3s;
+}
+
+.view-link:hover {
+    background: #f8f9fa;
+    border-color: #2980b9;
+    transform: translateY(-2px);
+}
+
+.view-link h3 {
+    margin: 0 0 0.5rem 0;
+    color: #3498db;
+}
+
+.view-link p {
+    margin: 0;
+    color: #666;
+}
+
+.description {
+    background: #e8f4f8;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+}
+
+.description ul {
+    margin: 0.5rem 0 0 1.5rem;
+}
+</style>
+{% endblock %}

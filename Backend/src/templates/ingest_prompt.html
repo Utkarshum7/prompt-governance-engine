@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Ingest Prompt - Smart Prompt Parser{% endblock %}
+
+{% block content %}
+<h1>Ingest Prompt</h1>
+
+<form method="POST" action="/api/v1/prompts" id="ingest-form">
+    <div class="form-group">
+        <label for="content">Prompt Content:</label>
+        <textarea id="content" name="content" required placeholder="Enter your prompt here..."></textarea>
+    </div>
+    
+    <button type="submit">Ingest Prompt</button>
+</form>
+
+<div id="result" style="margin-top: 2rem; display: none;"></div>
+
+<script>
+document.getElementById('ingest-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const content = formData.get('content');
+    
+    const resultDiv = document.getElementById('result');
+    resultDiv.style.display = 'block';
+    resultDiv.innerHTML = '<div class="alert alert-info">Processing...</div>';
+    
+    try {
+        const response = await fetch('/api/v1/prompts', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ content: content })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            resultDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <h3>Prompt Ingested Successfully!</h3>
+                    <p><strong>Prompt ID:</strong> ${data.prompt_id}</p>
+                    ${data.cluster_id ? `<p><strong>Cluster ID:</strong> ${data.cluster_id}</p>` : ''}
+                    ${data.similarity_score ? `<p><strong>Similarity Score:</strong> ${data.similarity_score.toFixed(3)}</p>` : ''}
+                    ${data.reasoning ? `<p><strong>Reasoning:</strong> ${data.reasoning}</p>` : ''}
+                    ${data.is_new_cluster ? '<p><em>New cluster created</em></p>' : ''}
+                </div>
+            `;
+            document.getElementById('content').value = '';
+        } else {
+            resultDiv.innerHTML = `
+                <div class="alert alert-error">
+                    <h3>Error</h3>
+                    <p>${data.detail?.error || 'Failed to ingest prompt'}</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `
+            <div class="alert alert-error">
+                <h3>Error</h3>
+                <p>${error.message}</p>
+            </div>
+        `;
+    }
+});
+</script>
+{% endblock %}
+

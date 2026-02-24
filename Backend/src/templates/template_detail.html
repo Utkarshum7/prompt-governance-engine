@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Template Details{% endblock %}
+
+{% block content %}
+<h1>Template Details</h1>
+
+<div class="template-info">
+    <h2>Version {{ template.version }}</h2>
+    <p><strong>Template ID:</strong> <code>{{ template.id }}</code></p>
+    <p><strong>Cluster ID:</strong> <code>{{ template.cluster_id }}</code></p>
+    <p><strong>Confidence Score:</strong> {{ "%.2f"|format(template.confidence_score) if template.confidence_score else 'N/A' }}</p>
+    <p><strong>Created:</strong> {{ template.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+</div>
+
+<div class="actions" style="margin: 1rem 0;">
+    <a href="/templates" class="btn">Back to Templates</a>
+    <a href="/templates/{{ template.id }}/versions" class="btn">View Versions</a>
+    <a href="/templates/{{ template.id }}/evolution" class="btn">View Evolution</a>
+</div>
+
+<h3>Template Content</h3>
+<div class="template-content">
+    <pre>{{ template.template_content }}</pre>
+</div>
+
+<h3>Variable Slots</h3>
+{% if slots %}
+    <div class="slots-list">
+        {% for slot in slots %}
+        <div class="slot-card">
+            <div class="slot-header">
+                <strong>{{ slot.name }}</strong>
+                {% if slot.type %}<span class="slot-type">{{ slot.type }}</span>{% endif %}
+                {% if slot.confidence %}<span class="slot-confidence">Confidence: {{ "%.2f"|format(slot.confidence) }}</span>{% endif %}
+            </div>
+            {% if slot.example_values %}
+            <div class="slot-examples">
+                <strong>Examples:</strong>
+                <ul>
+                    {% for example in slot.example_values %}
+                    <li><code>{{ example }}</code></li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <p>No variable slots detected in this template.</p>
+{% endif %}
+
+<style>
+.template-info {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+}
+
+.template-content {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+}
+
+.template-content pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: monospace;
+}
+
+.slots-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+}
+
+.slot-card {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.slot-header {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.slot-type {
+    background: #3498db;
+    color: white;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+.slot-confidence {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.slot-examples ul {
+    margin: 0.5rem 0 0 1.5rem;
+    padding: 0;
+}
+
+.slot-examples li {
+    margin: 0.25rem 0;
+}
+</style>
+{% endblock %}
+
