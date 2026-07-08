@@ -27,7 +27,7 @@ async def health_check() -> Dict[str, str]:
     return {
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
-        "service": "portkey-prompt-parser",
+        "service": "prompt-governance-engine",
     }
 
 
@@ -48,10 +48,11 @@ async def readiness_check(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
     status_details = {
         "status": "ready",
         "timestamp": datetime.utcnow().isoformat(),
-        "service": "portkey-prompt-parser",
+        "service": "prompt-governance-engine",
         "database": "disconnected",
         "redis": "disconnected",
         "qdrant": "disconnected",
+        "gemini": "disconnected",
     }
     
     # 1. Test database connection (Neon)
@@ -91,6 +92,18 @@ async def readiness_check(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
         logger.error("Qdrant readiness check failed", error=str(e))
         status_details["status"] = "not_ready"
         status_details["qdrant"] = f"error: {str(e)}"
+
+    # 4. Test Gemini connection (Gemini API)
+    try:
+        from src.clients.llm_client import get_async_llm_client
+        llm_client = get_async_llm_client()
+        # Verify API connectivity using model fetch (zero token cost)
+        await llm_client.client.aio.models.get(model="gemini-2.5-flash")
+        status_details["gemini"] = "connected"
+    except Exception as e:
+        logger.error("Gemini readiness check failed", error=str(e))
+        status_details["status"] = "not_ready"
+        status_details["gemini"] = f"error: {str(e)}"
 
     if status_details["status"] != "ready":
         raise HTTPException(

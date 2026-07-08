@@ -6,13 +6,11 @@
 # IMPORTANT: config.yaml is gitignored and should NEVER be committed to the repository.
 # Use environment variables or AWS Secrets Manager for production secrets.
 
-# Portkey AI Configuration
-# Portkey AI SDK configuration for model access and routing
-portkey:
-  # Portkey API key - Load from environment variable PORTKEY_API_KEY or AWS Secrets Manager
-  api_key: "${PORTKEY_API_KEY}"
-  # Base URL for Portkey API
-  base_url: "https://api.portkey.ai"
+# Gemini AI Configuration
+# Google Gemini API configuration for model access
+gemini:
+  # Gemini API key - Load from environment variable GEMINI_API_KEY or AWS Secrets Manager
+  api_key: "${GEMINI_API_KEY}"
   # Request timeout in seconds
   timeout: 30
   # Number of retry attempts for failed API calls
@@ -24,18 +22,18 @@ models:
   # Embedding model configuration
   embedding:
     # Primary embedding model for semantic clustering
-    primary: "@openai/text-embedding-3-small"
+    primary: "text-embedding-004"
     # Fallback embedding model for long/complex prompts (>8k tokens)
-    fallback: "@openai/text-embedding-3-large"
+    fallback: "text-embedding-004"
     # Batch size for embedding generation (50-200 recommended)
     batch_size: 100
   
   # Canonicalization model configuration
   canonicalization:
     # Primary model for template extraction
-    primary: "@openai/gpt-4o-2024-08-06"
+    primary: "gemini-2.5-pro"
     # Alternative model for code-heavy prompts
-    alternative: "@anthropic/claude-3-5-sonnet-latest"
+    alternative: "gemini-2.5-flash"
     # Maximum tokens for template extraction responses
     max_tokens: 2000
     # Temperature for template extraction (low for consistency)
@@ -44,14 +42,14 @@ models:
   # Reasoning model configuration
   reasoning:
     # Model for edge case reasoning and drift detection
-    model: "@openai/o1-mini"
+    model: "gemini-2.5-pro"
     # Maximum tokens for reasoning responses
     max_tokens: 1000
   
   # Moderation model configuration
   moderation:
     # Model for content moderation and safety checks
-    model: "@openai/omni-moderation-latest"
+    model: "gemini-2.5-flash"
 
 # AWS Configuration
 # AWS services configuration for deployment and infrastructure

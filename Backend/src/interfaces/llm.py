@@ -1,7 +1,9 @@
-"""Abstract interface for LLM client providers."""
-
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
+
+class LLMClientError(Exception):
+    """Base exception class for all LLM client providers."""
+    pass
 
 
 class ILLMProvider(ABC):

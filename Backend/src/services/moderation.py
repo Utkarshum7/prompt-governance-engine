@@ -4,7 +4,8 @@ from typing import Any, Dict, Optional
 
 from structlog import get_logger
 
-from src.clients.portkey import AsyncPortkeyClient, PortkeyClientError, get_async_portkey_client
+from src.clients.llm_client import get_async_llm_client, LLMClientError
+from src.interfaces.llm import ILLMProvider
 from src.config.settings import get_settings
 
 logger = get_logger(__name__)
@@ -13,16 +14,16 @@ logger = get_logger(__name__)
 class ModerationService:
     """Service for content moderation using text-moderation-latest."""
 
-    def __init__(self, client: Optional[AsyncPortkeyClient] = None):
+    def __init__(self, client: Optional[ILLMProvider] = None):
         """
         Initialize moderation service.
 
         Args:
-            client: Optional AsyncPortkeyClient instance. If None, creates a new one.
+            client: Optional ILLMProvider instance. If None, creates a new one.
         """
         settings = get_settings()
         self.model = settings.models.moderation.model
-        self.client = client or get_async_portkey_client(provider=self.model)
+        self.client = client or get_async_llm_client(provider=self.model)
 
         logger.info("Moderation service initialized", model=self.model)
 
@@ -125,12 +126,12 @@ class ModerationService:
                 "category_scores": category_scores,
             }
 
-        except PortkeyClientError as e:
+        except LLMClientError as e:
             logger.error("Moderation API error", error=str(e), trace_id=trace_id)
             raise
         except Exception as e:
             logger.error("Unexpected moderation error", error=str(e), trace_id=trace_id)
-            raise PortkeyClientError(f"Moderation failed: {e}") from e
+            raise LLMClientError(f"Moderation failed: {e}") from e
 
     async def is_safe(self, content: str, trace_id: Optional[str] = None) -> bool:
         """

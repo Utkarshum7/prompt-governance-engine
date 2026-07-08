@@ -6,7 +6,8 @@ from typing import Any, Dict, List, Optional
 
 from structlog import get_logger
 
-from src.clients.portkey import AsyncPortkeyClient, PortkeyClientError, get_async_portkey_client
+from src.clients.llm_client import get_async_llm_client, LLMClientError
+from src.interfaces.llm import ILLMProvider
 from src.config.settings import get_settings
 
 logger = get_logger(__name__)
@@ -15,18 +16,18 @@ logger = get_logger(__name__)
 class ReasoningService:
     """Service for handling ambiguous clustering decisions using o1-mini."""
 
-    def __init__(self, client: Optional[AsyncPortkeyClient] = None):
+    def __init__(self, client: Optional[ILLMProvider] = None):
         """
         Initialize reasoning service.
 
         Args:
-            client: Optional AsyncPortkeyClient instance
+            client: Optional ILLMProvider instance
         """
         settings = get_settings()
         self.model = settings.models.reasoning.model
         self.max_tokens = settings.models.reasoning.max_tokens
 
-        self.client = client or get_async_portkey_client(provider=self.model)
+        self.client = client or get_async_llm_client(provider=self.model)
 
         logger.info("Reasoning service initialized", model=self.model)
 
@@ -174,7 +175,7 @@ Example output:
 
         except json.JSONDecodeError as e:
             logger.error("JSON decode error in edge case reasoning", error=str(e), trace_id=trace_id)
-            raise PortkeyClientError(f"Invalid JSON response from reasoning: {e}") from e
+            raise LLMClientError(f"Invalid JSON response from reasoning: {e}") from e
         except Exception as e:
             logger.error("Error classifying edge case", error=str(e), trace_id=trace_id)
             raise
@@ -251,12 +252,12 @@ Example output:
 _reasoning_service: Optional[ReasoningService] = None
 
 
-def get_reasoning_service(client: Optional[AsyncPortkeyClient] = None) -> ReasoningService:
+def get_reasoning_service(client: Optional[ILLMProvider] = None) -> ReasoningService:
     """
     Get global reasoning service instance.
 
     Args:
-        client: Optional AsyncPortkeyClient instance
+        client: Optional ILLMProvider instance
 
     Returns:
         ReasoningService instance

@@ -174,7 +174,7 @@ class AIOrchestrator:
             # Log AI decision
             log_ai_decision(
                 request_id=req_id,
-                selected_model="dynamic-portkey-router",
+                selected_model="dynamic-gemini-router",
                 routing_reason="canonicalization",
                 confidence_score=extraction["confidence"],
                 cluster_id=str(cluster_id),

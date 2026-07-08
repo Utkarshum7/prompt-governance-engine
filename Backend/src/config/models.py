@@ -6,26 +6,25 @@ from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class PortkeyConfig(BaseSettings):
-    """Portkey AI configuration."""
+class GeminiConfig(BaseSettings):
+    """Google Gemini API configuration."""
 
-    api_key: str = Field(..., description="Portkey API key")
-    base_url: str = Field(default="https://api.portkey.ai", description="Portkey API base URL")
+    api_key: str = Field(..., description="Gemini API key")
     timeout: int = Field(default=30, ge=1, le=300, description="Request timeout in seconds")
     retry_attempts: int = Field(default=3, ge=0, le=10, description="Number of retry attempts")
 
-    model_config = SettingsConfigDict(env_prefix="PORTKEY_")
+    model_config = SettingsConfigDict(env_prefix="GEMINI_")
 
 
 class EmbeddingModelConfig(BaseSettings):
     """Embedding model configuration."""
 
     primary: str = Field(
-        default="@openai/text-embedding-3-small",
+        default="text-embedding-004",
         description="Primary embedding model",
     )
     fallback: str = Field(
-        default="@openai/text-embedding-3-large",
+        default="text-embedding-004",
         description="Fallback embedding model for long prompts",
     )
     batch_size: int = Field(default=100, ge=1, le=200, description="Batch size for embeddings")
@@ -35,11 +34,11 @@ class CanonicalizationModelConfig(BaseSettings):
     """Canonicalization model configuration."""
 
     primary: str = Field(
-        default="@openai/gpt-4o-2024-08-06",
+        default="gemini-2.5-pro",
         description="Primary canonicalization model",
     )
     alternative: str = Field(
-        default="@anthropic/claude-3-5-sonnet-latest",
+        default="gemini-2.5-flash",
         description="Alternative model for code-heavy prompts",
     )
     max_tokens: int = Field(default=2000, ge=100, le=8000, description="Max tokens for responses")
@@ -49,7 +48,7 @@ class CanonicalizationModelConfig(BaseSettings):
 class ReasoningModelConfig(BaseSettings):
     """Reasoning model configuration."""
 
-    model: str = Field(default="@openai/o1-mini", description="Reasoning model")
+    model: str = Field(default="gemini-2.5-pro", description="Reasoning model")
     max_tokens: int = Field(default=1000, ge=100, le=4000, description="Max tokens for responses")
 
 
@@ -57,8 +56,8 @@ class ModerationModelConfig(BaseSettings):
     """Moderation model configuration."""
 
     model: str = Field(
-        default="@openai/text-moderation-latest",
-        description="Content moderation model",
+        default="gemini-2.5-flash",
+        description="Model for content moderation and safety checks",
     )
 
 
@@ -92,7 +91,7 @@ class SecretsManagerConfig(BaseSettings):
 
     enabled: bool = Field(default=True, description="Enable Secrets Manager integration")
     secret_name: str = Field(
-        default="portkey-prompt-parser/secrets",
+        default="prompt-governance-engine/secrets",
         description="Secret name in AWS Secrets Manager",
     )
 
@@ -347,7 +346,7 @@ class CloudWatchConfig(BaseSettings):
 
     enabled: bool = Field(default=True, description="Enable CloudWatch logging")
     log_group: str = Field(
-        default="/aws/ecs/portkey-prompt-parser", description="CloudWatch log group"
+        default="/aws/ecs/prompt-governance-engine", description="CloudWatch log group"
     )
     region: str = Field(default="us-east-2", description="CloudWatch region")
 
@@ -372,7 +371,7 @@ class ObservabilityConfig(BaseSettings):
 class Settings(BaseSettings):
     """Root settings model."""
 
-    portkey: PortkeyConfig = Field(..., description="Portkey AI configuration")
+    gemini: GeminiConfig = Field(..., description="Google Gemini API configuration")
     models: ModelsConfig = Field(default_factory=ModelsConfig, description="Model configurations")
     aws: AWSConfig = Field(..., description="AWS configuration")
     database: DatabaseConfig = Field(..., description="Database configuration")

@@ -58,36 +58,34 @@ class ModelRouter:
                 model=reasoning_model,
             )
             first_target = reasoning_model
-            second_target = primary_model
+            second_target = alternative_model
         else:
             # Route based on complexity and code detection from Decision Engine
             if decision.is_code or decision.task_type == "coding":
-                logger.info("Router: Routing to Claude for complex code workload", model=alternative_model)
-                first_target = alternative_model
-                second_target = primary_model
-            elif decision.complexity == "high":
-                logger.info("Router: Routing to GPT-4o for high complexity prompt", model=primary_model)
+                logger.info("Router: Routing to Gemini Pro for complex code workload", model=primary_model)
+                first_target = primary_model
+                second_target = alternative_model
+            elif decision.complexity == "high" or decision.complexity == "medium":
+                logger.info("Router: Routing to Gemini Pro for high/medium complexity prompt", model=primary_model)
                 first_target = primary_model
                 second_target = alternative_model
             else:
-                logger.info("Router: Routing to GPT-4o-mini/standard for low/medium complexity prompt", model=primary_model)
-                # In production, we can route simple prompts to a cheaper model (e.g. gpt-4o-mini)
-                # But to maintain exact consistency, we use primary_model and alternative_model
-                first_target = primary_model
-                second_target = alternative_model
+                logger.info("Router: Routing to Gemini Flash for low complexity prompt", model=alternative_model)
+                first_target = alternative_model
+                second_target = primary_model
 
-        # Helper to parse Portkey format e.g. "@openai/gpt-4o-2024-08-06" to provider and model
+        # Helper to parse format e.g. "@google/gemini-2.5-pro" or "gemini-2.5-pro" to provider and model
         def parse_target(target_str: str) -> Dict[str, Any]:
             if target_str.startswith("@"):
                 parts = target_str[1:].split("/", 1)
                 if len(parts) == 2:
                     return {"provider": parts[0], "model": parts[1]}
-            return {"provider": "openai", "model": target_str}
+            return {"provider": "google", "model": target_str}
 
         t1 = parse_target(first_target)
         t2 = parse_target(second_target)
 
-        # Portkey dynamic routing config
+        # Dynamic routing config structure
         return {
             "strategy": {
                 "mode": "fallback"

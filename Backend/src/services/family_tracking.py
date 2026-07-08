@@ -7,7 +7,8 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
-from src.clients.portkey import AsyncPortkeyClient, PortkeyClientError, get_async_portkey_client
+from src.clients.llm_client import get_async_llm_client, LLMClientError
+from src.interfaces.llm import ILLMProvider
 from src.config.settings import get_settings
 from src.models.database import (
     Cluster,
@@ -25,7 +26,7 @@ class FamilyTrackingService:
     def __init__(
         self,
         db: AsyncSession,
-        client: Optional[AsyncPortkeyClient] = None,
+        client: Optional[ILLMProvider] = None,
         drift_service: Optional[DriftDetectionService] = None,
     ):
         """
@@ -33,7 +34,7 @@ class FamilyTrackingService:
 
         Args:
             db: Database session
-            client: Optional AsyncPortkeyClient instance
+            client: Optional ILLMProvider instance
             drift_service: Optional DriftDetectionService instance
         """
         self.db = db
@@ -41,7 +42,7 @@ class FamilyTrackingService:
         self.model = settings.models.reasoning.model
         self.max_tokens = settings.models.reasoning.max_tokens
 
-        self.client = client or get_async_portkey_client(provider=self.model)
+        self.client = client or get_async_llm_client(provider=self.model)
         self.drift_service = drift_service or get_drift_detection_service(db)
 
         logger.info("Family tracking service initialized", model=self.model)
@@ -351,7 +352,7 @@ Example output:
 
         except json.JSONDecodeError as e:
             logger.error("JSON decode error in family analysis", error=str(e), trace_id=trace_id)
-            raise PortkeyClientError(f"Invalid JSON response from family analysis: {e}") from e
+            raise LLMClientError(f"Invalid JSON response from family analysis: {e}") from e
         except Exception as e:
             logger.error(
                 "Error analyzing family split/merge",
@@ -486,7 +487,7 @@ Example output:
 
 def get_family_tracking_service(
     db: AsyncSession,
-    client: Optional[AsyncPortkeyClient] = None,
+    client: Optional[ILLMProvider] = None,
     drift_service: Optional[DriftDetectionService] = None,
 ) -> FamilyTrackingService:
     """
@@ -494,7 +495,7 @@ def get_family_tracking_service(
 
     Args:
         db: Database session
-        client: Optional AsyncPortkeyClient instance
+        client: Optional ILLMProvider instance
         drift_service: Optional DriftDetectionService instance
 
     Returns:

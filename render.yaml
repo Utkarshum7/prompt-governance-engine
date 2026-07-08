@@ -12,22 +12,12 @@ services:
     region: oregon # Render's default region
     envVars:
       - key: ENV
-        value: prod
+        value: production
       - key: LOG_LEVEL
         value: INFO
       - key: PYTHON_VERSION
-        value: 3.12.3 # Use modern Python 3.12 runtime
-      - key: PORTKEY_API_KEY
-        sync: true # User will enter this in Render dashboard
-      - key: DATABASE_URL
-        sync: true # User will provide Neon connection string
-      - key: REDIS_URL
-        sync: true # User will provide Upstash Redis connection string
-      - key: QDRANT_URL
-        sync: true # User will provide Qdrant Cloud URL (https://...)
-      - key: QDRANT_API_KEY
-        sync: true # User will provide Qdrant Cloud API key
+        value: 3.12.3
       - key: AWS_SECRETS_ENABLED
-        value: "false" # Use environment variables instead of AWS Secrets Manager
+        value: "false"
       - key: WORKERS
-        value: "4" # Number of Uvicorn workers
+        value: "4"

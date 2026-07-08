@@ -7,7 +7,8 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
-from src.clients.portkey import AsyncPortkeyClient, PortkeyClientError, get_async_portkey_client
+from src.clients.llm_client import get_async_llm_client, LLMClientError
+from src.interfaces.llm import ILLMProvider
 from src.config.settings import get_settings
 from src.models.database import CanonicalTemplate, Cluster
 from src.services.evolution import EvolutionTrackingService, get_evolution_tracking_service
@@ -21,7 +22,7 @@ class DriftDetectionService:
     def __init__(
         self,
         db: AsyncSession,
-        client: Optional[AsyncPortkeyClient] = None,
+        client: Optional[ILLMProvider] = None,
         evolution_service: Optional[EvolutionTrackingService] = None,
     ):
         """
@@ -29,7 +30,7 @@ class DriftDetectionService:
 
         Args:
             db: Database session
-            client: Optional AsyncPortkeyClient instance
+            client: Optional ILLMProvider instance
             evolution_service: Optional EvolutionTrackingService instance
         """
         self.db = db
@@ -37,7 +38,7 @@ class DriftDetectionService:
         self.model = settings.models.reasoning.model
         self.max_tokens = settings.models.reasoning.max_tokens
 
-        self.client = client or get_async_portkey_client(provider=self.model)
+        self.client = client or get_async_llm_client(provider=self.model)
         self.evolution_service = evolution_service or get_evolution_tracking_service(db)
 
         logger.info("Drift detection service initialized", model=self.model)
@@ -230,7 +231,7 @@ Example output:
 
         except json.JSONDecodeError as e:
             logger.error("JSON decode error in drift detection", error=str(e), trace_id=trace_id)
-            raise PortkeyClientError(f"Invalid JSON response from drift detection: {e}") from e
+            raise LLMClientError(f"Invalid JSON response from drift detection: {e}") from e
         except Exception as e:
             logger.error(
                 "Error detecting drift",
@@ -287,7 +288,7 @@ Example output:
 
 def get_drift_detection_service(
     db: AsyncSession,
-    client: Optional[AsyncPortkeyClient] = None,
+    client: Optional[ILLMProvider] = None,
     evolution_service: Optional[EvolutionTrackingService] = None,
 ) -> DriftDetectionService:
     """
@@ -295,7 +296,7 @@ def get_drift_detection_service(
 
     Args:
         db: Database session
-        client: Optional AsyncPortkeyClient instance
+        client: Optional ILLMProvider instance
         evolution_service: Optional EvolutionTrackingService instance
 
     Returns:

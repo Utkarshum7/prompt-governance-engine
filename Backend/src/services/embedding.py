@@ -7,7 +7,8 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 from structlog import get_logger
 
-from src.clients.portkey import AsyncPortkeyClient, PortkeyClientError, get_async_portkey_client
+from src.clients.llm_client import get_async_llm_client, LLMClientError
+from src.interfaces.llm import ILLMProvider
 from src.clients.redis import RedisClient, get_redis_client
 from src.config.settings import get_settings
 
@@ -22,21 +23,21 @@ class EmbeddingService:
 
     def __init__(
         self,
-        client: Optional[AsyncPortkeyClient] = None,
+        client: Optional[ILLMProvider] = None,
         redis_client: Optional[RedisClient] = None,
     ):
         """
         Initialize embedding service.
 
         Args:
-            client: Optional AsyncPortkeyClient instance. If None, creates a new one.
+            client: Optional ILLMProvider instance. If None, creates a new one.
             redis_client: Optional RedisClient instance. If None, creates a new one.
         """
         settings = get_settings()
         self.primary_model = settings.models.embedding.primary
         self.fallback_model = settings.models.embedding.fallback
         self.batch_size = settings.models.embedding.batch_size
-        self.client = client or get_async_portkey_client(provider=self.primary_model)
+        self.client = client or get_async_llm_client(provider=self.primary_model)
         self.redis_client = redis_client or get_redis_client()
 
         logger.info(
@@ -157,7 +158,7 @@ class EmbeddingService:
 
             # Create client with selected model if different from default
             if selected_model != self.primary_model:
-                client_with_options = get_async_portkey_client(provider=selected_model)
+                client_with_options = get_async_llm_client(provider=selected_model)
 
             response = await client_with_options.embeddings_create(
                 input=text,
@@ -169,7 +170,7 @@ class EmbeddingService:
             embedding_data = response.data[0] if response.data else None
 
             if not embedding_data:
-                raise PortkeyClientError("No embedding data returned")
+                raise LLMClientError("No embedding data returned")
 
             raw_embedding = embedding_data.embedding if hasattr(embedding_data, "embedding") else ""
 
@@ -181,12 +182,12 @@ class EmbeddingService:
                     embedding = np.frombuffer(decoded_bytes, dtype=np.float32).tolist()
                 except Exception as e:
                     logger.error("Failed to decode base64 embedding", error=str(e))
-                    raise PortkeyClientError(f"Failed to decode embedding: {e}")
+                    raise LLMClientError(f"Failed to decode embedding: {e}")
             elif isinstance(raw_embedding, list):
                 # Already a list of floats
                 embedding = raw_embedding
             else:
-                raise PortkeyClientError("Unexpected embedding format")
+                raise LLMClientError("Unexpected embedding format")
 
             metadata = {
                 "model": selected_model,
@@ -214,12 +215,12 @@ class EmbeddingService:
 
             return embedding, metadata
 
-        except PortkeyClientError as e:
+        except LLMClientError as e:
             logger.error("Embedding API error", error=str(e), trace_id=trace_id)
             raise
         except Exception as e:
             logger.error("Unexpected embedding error", error=str(e), trace_id=trace_id)
-            raise PortkeyClientError(f"Embedding generation failed: {e}") from e
+            raise LLMClientError(f"Embedding generation failed: {e}") from e
 
     async def generate_embeddings_batch(
         self,
@@ -266,7 +267,7 @@ class EmbeddingService:
 
             # Create client with selected model if different from default
             if selected_model != self.primary_model:
-                client_with_options = get_async_portkey_client(provider=selected_model)
+                client_with_options = get_async_llm_client(provider=selected_model)
 
             response = await client_with_options.embeddings_create(
                 input=texts,
@@ -298,12 +299,12 @@ class EmbeddingService:
 
             return results
 
-        except PortkeyClientError as e:
+        except LLMClientError as e:
             logger.error("Batch embedding API error", error=str(e), trace_id=trace_id)
             raise
         except Exception as e:
             logger.error("Unexpected batch embedding error", error=str(e), trace_id=trace_id)
-            raise PortkeyClientError(f"Batch embedding generation failed: {e}") from e
+            raise LLMClientError(f"Batch embedding generation failed: {e}") from e
 
 
 # Global embedding service instance

@@ -6,7 +6,7 @@ Get the Smart Prompt Parser running locally in minutes!
 
 - Python 3.11+ installed
 - Docker and Docker Compose installed
-- Portkey API key
+- Gemini API key
 
 ## Option 1: Using Makefile (Recommended)
 
@@ -18,7 +18,7 @@ make quickstart
 
 Then:
 1. Copy `config/config.example.yaml` to `config/config.yaml`
-2. Add your Portkey API key to `config/config.yaml`
+2. Add your Gemini API key to `config/config.yaml`
 3. Run `make dev`
 
 ### Step by Step
@@ -29,7 +29,7 @@ make setup
 
 # 2. Configure (copy and edit config)
 cp config/config.example.yaml config/config.yaml
-# Edit config/config.yaml and add your PORTKEY_API_KEY
+# Edit config/config.yaml and add your GEMINI_API_KEY
 
 # 3. Start Docker services
 make up
@@ -54,7 +54,7 @@ This will:
 - Run migrations
 - Start the application
 
-**Note**: You still need to configure `config/config.yaml` with your Portkey API key.
+**Note**: You still need to configure `config/config.yaml` with your Gemini API key.
 
 ## Option 3: Manual Setup
 
@@ -85,8 +85,8 @@ uvicorn src.main:app --reload
 Minimum required configuration in `config/config.yaml`:
 
 ```yaml
-portkey:
-  api_key: "your-portkey-api-key-here"
+gemini:
+  api_key: "your-gemini-api-key-here"
 ```
 
 For local development with Docker, database defaults are:

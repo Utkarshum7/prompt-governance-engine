@@ -11,7 +11,7 @@ echo "=================================================="
 cd Backend
 
 # Add the src folder to PYTHONPATH to ensure correct module imports
-export PYTHONPATH=$PYTHONPATH:$(pwd)
+export PYTHONPATH=$(pwd)
 
 # Run database migrations using Alembic
 echo "Running database migrations..."

@@ -199,7 +199,7 @@ class ConfigLoader:
             secret_name = (
                 yaml_config.get("aws", {})
                 .get("secrets_manager", {})
-                .get("secret_name", "portkey-prompt-parser/secrets")
+                .get("secret_name", "prompt-governance-engine/secrets")
             )
             aws_region = yaml_config.get("aws", {}).get("region", "us-east-2")
 

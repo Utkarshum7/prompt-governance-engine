@@ -8,7 +8,8 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
-from src.clients.portkey import AsyncPortkeyClient, PortkeyClientError, get_async_portkey_client
+from src.clients.llm_client import get_async_llm_client, LLMClientError
+from src.interfaces.llm import ILLMProvider
 from src.config.settings import get_settings
 from src.models.database import CanonicalTemplate, Cluster, TemplateSlot
 from src.services.model_router import ModelRouter, get_model_router
@@ -70,7 +71,7 @@ class CanonicalizationService:
         self,
         db: AsyncSession,
         model_router: Optional[ModelRouter] = None,
-        client: Optional[AsyncPortkeyClient] = None,
+        client: Optional[ILLMProvider] = None,
     ):
         """
         Initialize canonicalization service.
@@ -78,7 +79,7 @@ class CanonicalizationService:
         Args:
             db: Database session
             model_router: Optional ModelRouter instance
-            client: Optional AsyncPortkeyClient instance
+            client: Optional ILLMProvider instance
         """
         self.db = db
         self.model_router = model_router or get_model_router()
@@ -89,7 +90,7 @@ class CanonicalizationService:
         self.temperature = settings.models.canonicalization.temperature
 
         # Use provided client or create default GPT-4o client
-        self.client = client or get_async_portkey_client(provider=self.gpt4o_model)
+        self.client = client or get_async_llm_client(provider=self.gpt4o_model)
 
         logger.info(
             "Canonicalization service initialized",
@@ -182,8 +183,8 @@ Example output format:
             confidence_score=confidence_score
         )
 
-        # Instantiate Portkey client using the dynamic routing configuration dict
-        client = get_async_portkey_client(config=routing_config)
+        # Instantiate Gemini/LLM client using the dynamic routing configuration dict
+        client = get_async_llm_client(config=routing_config)
         if trace_id:
             client = client.with_options(trace_id=trace_id)
 
@@ -236,10 +237,10 @@ Example output format:
 
         except json.JSONDecodeError as e:
             logger.error("JSON decode error in template extraction", error=str(e), model=primary_model, trace_id=trace_id)
-            raise PortkeyClientError(f"Invalid JSON response from template extraction: {e}") from e
+            raise LLMClientError(f"Invalid JSON response from template extraction: {e}") from e
         except Exception as e:
-            logger.error("Error extracting template via Portkey router", error=str(e), model=primary_model, trace_id=trace_id)
-            raise PortkeyClientError(f"Template extraction failed: {e}") from e
+            logger.error("Error extracting template via LLM router", error=str(e), model=primary_model, trace_id=trace_id)
+            raise LLMClientError(f"Template extraction failed: {e}") from e
 
     def _detect_variable_slots(self, template: str) -> List[Dict[str, Any]]:
         """
@@ -457,7 +458,7 @@ Example output format:
 def get_canonicalization_service(
     db: AsyncSession,
     model_router: Optional[ModelRouter] = None,
-    client: Optional[AsyncPortkeyClient] = None,
+    client: Optional[ILLMProvider] = None,
 ) -> CanonicalizationService:
     """
     Get canonicalization service instance.
@@ -465,7 +466,7 @@ def get_canonicalization_service(
     Args:
         db: Database session
         model_router: Optional ModelRouter instance
-        client: Optional AsyncPortkeyClient instance
+        client: Optional ILLMProvider instance
 
     Returns:
         CanonicalizationService instance

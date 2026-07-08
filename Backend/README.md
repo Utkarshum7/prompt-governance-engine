@@ -25,7 +25,7 @@ This will:
 
 **Note**: After running `make quickstart`, you still need to:
 1. Copy `config/config.example.yaml` to `config/config.yaml`
-2. Update `config/config.yaml` with your Portkey API key
+2. Update `config/config.yaml` with your Gemini API key
 3. Run `make dev` to start the application
 
 ### Step-by-Step Setup
@@ -48,8 +48,8 @@ pip install -r requirements-dev.txt
 # Copy config template
 cp config/config.example.yaml config/config.yaml
 
-# Edit config/config.yaml and add your Portkey API key
-# At minimum, update: portkey.api_key
+# Edit config/config.yaml and add your Gemini API key
+# At minimum, update: gemini.api_key
 ```
 
 #### 3. Start Infrastructure Services
@@ -156,7 +156,7 @@ Backend/
 Configuration is managed through `config/config.yaml`. See `config/config.example.yaml` for all available options.
 
 **Minimum required configuration:**
-- `portkey.api_key` - Your Portkey API key
+- `gemini.api_key` - Your Gemini API key
 
 **For local development with Docker:**
 - Database settings use defaults (localhost, postgres/postgres)
