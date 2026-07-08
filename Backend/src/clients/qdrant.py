@@ -9,6 +9,8 @@ from structlog import get_logger
 
 from src.config.settings import get_settings
 
+from src.interfaces.vector_db import IVectorDBProvider
+
 logger = get_logger(__name__)
 
 # Collection configuration
@@ -17,7 +19,7 @@ VECTOR_SIZE = 1536  # text-embedding-3-small dimension
 
 
 # Synchronous Qdrant client wrapper removed - using HTTP requests instead
-class AsyncQdrantClientWrapper:
+class AsyncQdrantClientWrapper(IVectorDBProvider):
     """Async wrapper for Qdrant client using HTTP requests."""
 
     def __init__(self):
@@ -28,12 +30,21 @@ class AsyncQdrantClientWrapper:
         if not qdrant_config:
             raise ValueError("Qdrant configuration not found")
 
-        # Use IP address directly to avoid DNS resolution issues
-        host = qdrant_config.host
-        if host == "127.0.0.1" or host == "localhost":
-            host = "127.0.0.1"  # Force IPv4
-        self.base_url = f"http://{host}:{qdrant_config.port}"
-        self.api_key = qdrant_config.api_key
+        # Check if QDRANT_URL is set in environment, use it directly if so
+        import os
+        qdrant_url = os.getenv("QDRANT_URL")
+        self.api_key = os.getenv("QDRANT_API_KEY") or qdrant_config.api_key
+        
+        if qdrant_url:
+            self.base_url = qdrant_url.rstrip("/")
+        else:
+            host = qdrant_config.host
+            if host == "127.0.0.1" or host == "localhost":
+                host = "127.0.0.1"  # Force IPv4
+            # Determine scheme based on api key, hostname, or port
+            scheme = "https" if (self.api_key or "qdrant.tech" in host or qdrant_config.port == 443) else "http"
+            self.base_url = f"{scheme}://{host}:{qdrant_config.port}"
+            
         self.session = requests.Session()
         self.session.timeout = 30.0
 
@@ -118,13 +129,26 @@ class AsyncQdrantClientWrapper:
             Collection info dictionary or None if collection doesn't exist
         """
         try:
-            info = await self.client.get_collection(COLLECTION_NAME)
-            return {
-                "name": info.name,
-                "vectors_count": info.vectors_count,
-                "points_count": info.points_count,
-                "status": info.status,
-            }
+            headers = {}
+            if self.api_key:
+                headers["api-key"] = self.api_key
+
+            response = await asyncio.to_thread(
+                self.session.get,
+                f"{self.base_url}/collections/{COLLECTION_NAME}",
+                headers=headers
+            )
+            if response.status_code == 200:
+                result = response.json().get("result", {})
+                return {
+                    "name": COLLECTION_NAME,
+                    "vectors_count": result.get("vectors_count"),
+                    "points_count": result.get("points_count"),
+                    "status": result.get("status"),
+                }
+            else:
+                logger.error("Failed to get collection info from Qdrant", status=response.status_code, response=response.text[:200])
+                return None
         except Exception as e:
             logger.error("Error getting collection info", error=str(e))
             return None
@@ -266,12 +290,26 @@ class AsyncQdrantClientWrapper:
             True if successful, False otherwise
         """
         try:
-            await self.client.delete(
-                collection_name=COLLECTION_NAME,
-                points_selector=point_ids,
+            # Ensure collection exists before deleting
+            await self.ensure_collection()
+
+            headers = {"Content-Type": "application/json"}
+            if self.api_key:
+                headers["api-key"] = self.api_key
+
+            request_data = {"points": [str(pid) for pid in point_ids]}
+            response = await asyncio.to_thread(
+                self.session.post,
+                f"{self.base_url}/collections/{COLLECTION_NAME}/points/delete",
+                json=request_data,
+                headers=headers
             )
-            logger.debug("Points deleted", count=len(point_ids), collection=COLLECTION_NAME)
-            return True
+            if response.status_code in [200, 201]:
+                logger.debug("Points deleted successfully", count=len(point_ids), collection=COLLECTION_NAME)
+                return True
+            else:
+                logger.error("Failed to delete points", status=response.status_code, response=response.text[:200])
+                return False
         except Exception as e:
             logger.error("Error deleting points", error=str(e), count=len(point_ids))
             return False

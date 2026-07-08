@@ -157,110 +157,67 @@ Example output format:
 }}
 """
 
-    async def _extract_template_with_gpt4o(
-        self, prompts: List[str], trace_id: Optional[str] = None
+    async def _extract_template_with_router(
+        self,
+        prompts: List[str],
+        confidence_score: Optional[float] = None,
+        trace_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Extract template using GPT-4o.
+        Extract template using dynamically routed Portkey configuration.
 
         Args:
             prompts: List of prompt texts
+            confidence_score: Optional previous confidence score (to trigger reasoning upgrade)
             trace_id: Optional trace ID
 
         Returns:
             Template extraction result
         """
-        extraction_prompt = self._build_extraction_prompt(prompts)
-
-        # Use with_options for request-level overrides
-        client_with_options = (
-            self.client.with_options(trace_id=trace_id) if trace_id else self.client
+        combined_prompts = "\n\n".join(prompts)
+        
+        # Get dynamic Portkey routing configuration from the model router
+        routing_config = self.model_router.get_portkey_config(
+            prompt=combined_prompts,
+            confidence_score=confidence_score
         )
 
-        # Create GPT-4o client if not already using it
-        if self.client != get_async_portkey_client(provider=self.gpt4o_model):
-            client_with_options = get_async_portkey_client(provider=self.gpt4o_model)
-            if trace_id:
-                client_with_options = client_with_options.with_options(trace_id=trace_id)
-
-        try:
-            response = await client_with_options.chat_completions_create(
-                model=self.gpt4o_model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are an expert at extracting canonical templates from similar prompts. Always return valid JSON.",
-                    },
-                    {"role": "user", "content": extraction_prompt},
-                ],
-                temperature=self.temperature,
-                max_tokens=self.max_tokens,
-                response_format={"type": "json_object"},
-            )
-
-            # Parse response
-            content = response.choices[0].message.content
-            result = json.loads(content)
-
-            logger.debug(
-                "Template extracted with GPT-4o",
-                template=result.get("canonical_template", "")[:100],
-                slots_count=len(result.get("slots", [])),
-                trace_id=trace_id,
-            )
-
-            return result
-
-        except json.JSONDecodeError as e:
-            logger.error("JSON decode error in template extraction", error=str(e), trace_id=trace_id)
-            raise PortkeyClientError(f"Invalid JSON response from template extraction: {e}") from e
-        except Exception as e:
-            logger.error("Error extracting template with GPT-4o", error=str(e), trace_id=trace_id)
-            raise PortkeyClientError(f"Template extraction failed: {e}") from e
-
-    async def _extract_template_with_claude(
-        self, prompts: List[str], trace_id: Optional[str] = None
-    ) -> Dict[str, Any]:
-        """
-        Extract template using Claude Sonnet (for code-heavy prompts).
-
-        Args:
-            prompts: List of prompt texts
-            trace_id: Optional trace ID
-
-        Returns:
-            Template extraction result
-        """
-        extraction_prompt = self._build_extraction_prompt(prompts)
-
-        # Create Claude client
-        claude_client = get_async_portkey_client(provider=self.claude_model)
+        # Instantiate Portkey client using the dynamic routing configuration dict
+        client = get_async_portkey_client(config=routing_config)
         if trace_id:
-            claude_client = claude_client.with_options(trace_id=trace_id)
+            client = client.with_options(trace_id=trace_id)
+
+        extraction_prompt = self._build_extraction_prompt(prompts)
+        primary_model = routing_config["targets"][0]["model"]
+        provider = routing_config["targets"][0]["provider"]
 
         try:
-            response = await claude_client.chat_completions_create(
-                model=self.claude_model,
+            logger.info(
+                "Running routed Portkey template extraction",
+                primary_model=primary_model,
+                provider=provider,
+                is_retry_upgrade=(confidence_score is not None),
+                trace_id=trace_id
+            )
+
+            response = await client.chat_completions_create(
+                model=primary_model,
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are an expert at extracting canonical templates from similar prompts, especially those containing code. Always return valid JSON.",
+                        "content": "You are an expert at extracting canonical templates from similar prompts. Always return valid JSON matching the schema.",
                     },
                     {"role": "user", "content": extraction_prompt},
-                ],
-                temperature=self.temperature,
-                max_tokens=self.max_tokens,
+                ]
             )
 
-            # Parse response (Claude may not support response_format, so parse JSON from content)
             content = response.choices[0].message.content
 
-            # Extract JSON from response (may be wrapped in markdown code blocks)
+            # Clean up potential markdown formatting in response if any (especially from Claude/o1)
             json_match = re.search(r"```json\n(.*?)\n```", content, re.DOTALL)
             if json_match:
                 content = json_match.group(1)
             else:
-                # Try to find JSON object directly
                 json_match = re.search(r"\{.*\}", content, re.DOTALL)
                 if json_match:
                     content = json_match.group(0)
@@ -268,7 +225,8 @@ Example output format:
             result = json.loads(content)
 
             logger.debug(
-                "Template extracted with Claude",
+                "Template extracted via dynamic Portkey router",
+                model=primary_model,
                 template=result.get("canonical_template", "")[:100],
                 slots_count=len(result.get("slots", [])),
                 trace_id=trace_id,
@@ -277,10 +235,10 @@ Example output format:
             return result
 
         except json.JSONDecodeError as e:
-            logger.error("JSON decode error in template extraction", error=str(e), trace_id=trace_id)
+            logger.error("JSON decode error in template extraction", error=str(e), model=primary_model, trace_id=trace_id)
             raise PortkeyClientError(f"Invalid JSON response from template extraction: {e}") from e
         except Exception as e:
-            logger.error("Error extracting template with Claude", error=str(e), trace_id=trace_id)
+            logger.error("Error extracting template via Portkey router", error=str(e), model=primary_model, trace_id=trace_id)
             raise PortkeyClientError(f"Template extraction failed: {e}") from e
 
     def _detect_variable_slots(self, template: str) -> List[Dict[str, Any]]:
@@ -351,17 +309,27 @@ Example output format:
                 trace_id=trace_id,
             )
 
-            # Determine which model to use
-            # Check if prompts are code-heavy
-            combined_prompts = " ".join(prompts)
-            is_code_heavy = self.model_router._detect_code(combined_prompts)
+            # Extract template using the dynamic Portkey router
+            result = await self._extract_template_with_router(prompts, trace_id=trace_id)
 
-            if force_model == "claude" or (is_code_heavy and force_model != "gpt4o"):
-                # Use Claude for code-heavy prompts
-                result = await self._extract_template_with_claude(prompts, trace_id=trace_id)
-            else:
-                # Use GPT-4o for regular prompts
-                result = await self._extract_template_with_gpt4o(prompts, trace_id=trace_id)
+            # Check if confidence is below the threshold. If so, dynamically upgrade to reasoning model!
+            settings = get_settings()
+            confidence_threshold = settings.app.clustering.confidence_threshold
+            extracted_confidence = result.get("confidence", 0.5)
+
+            if extracted_confidence < confidence_threshold:
+                logger.info(
+                    "Extracted template confidence below threshold, retrying with reasoning model upgrade",
+                    confidence=extracted_confidence,
+                    threshold=confidence_threshold,
+                    cluster_id=cluster_id
+                )
+                # Retry with previous low confidence score passed, prompting model upgrade in the router
+                result = await self._extract_template_with_router(
+                    prompts,
+                    confidence_score=extracted_confidence,
+                    trace_id=trace_id
+                )
 
             # Validate and enhance slots
             canonical_template = result.get("canonical_template", "")

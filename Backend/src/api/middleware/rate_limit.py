@@ -5,7 +5,7 @@ from typing import Optional
 
 from fastapi import HTTPException, Request, status
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
 from structlog import get_logger
 
 from src.clients.redis import RedisClient, get_redis_client
@@ -85,9 +85,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     endpoint=endpoint,
                     count=count,
                 )
-                raise HTTPException(
+                return JSONResponse(
                     status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    detail={
+                    content={
                         "error": "Rate limit exceeded",
                         "limit": self.default_limit,
                         "window": "1 minute",

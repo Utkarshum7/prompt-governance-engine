@@ -15,6 +15,8 @@ from tenacity import (
 
 from src.config.settings import get_settings
 
+from src.interfaces.llm import ILLMProvider
+
 logger = get_logger(__name__)
 
 
@@ -24,7 +26,7 @@ class PortkeyClientError(Exception):
     pass
 
 
-class PortkeyClient:
+class PortkeyClient(ILLMProvider):
     """Portkey AI client wrapper with retry logic and error handling."""
 
     def __init__(
@@ -158,7 +160,7 @@ class PortkeyClient:
         return self._execute_with_retry(self.client.moderations.create, *args, **kwargs)
 
 
-class AsyncPortkeyClient:
+class AsyncPortkeyClient(ILLMProvider):
     """Async Portkey AI client wrapper with retry logic and error handling."""
 
     def __init__(

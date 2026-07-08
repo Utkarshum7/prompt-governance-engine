@@ -8,10 +8,12 @@ from structlog import get_logger
 
 from src.config.settings import get_settings
 
+from src.interfaces.cache import ICache
+
 logger = get_logger(__name__)
 
 
-class RedisClient:
+class RedisClient(ICache):
     """Redis client wrapper for caching operations."""
 
     def __init__(self, redis_client: Optional[Redis] = None):
@@ -28,13 +30,25 @@ class RedisClient:
         """Get or create Redis client."""
         if self._client is None:
             redis_config = self._settings.database.redis
-            self._client = Redis.from_url(
-                f"redis://{redis_config.host}:{redis_config.port}",
-                password=redis_config.password or None,
-                db=redis_config.db,
-                decode_responses=redis_config.decode_responses,
-            )
-            logger.info("Redis client initialized", host=redis_config.host, port=redis_config.port)
+            import os
+            redis_url = os.getenv("REDIS_URL")
+            if redis_url:
+                self._client = Redis.from_url(
+                    redis_url,
+                    decode_responses=redis_config.decode_responses,
+                )
+                # Parse host for logging, masking credentials
+                masked_url = redis_url.split("@")[-1] if "@" in redis_url else redis_url
+                logger.info("Redis client initialized from REDIS_URL", url=masked_url)
+            else:
+                scheme = "rediss" if redis_config.port == 6380 or "upstash.io" in redis_config.host else "redis"
+                self._client = Redis.from_url(
+                    f"{scheme}://{redis_config.host}:{redis_config.port}",
+                    password=redis_config.password or None,
+                    db=redis_config.db,
+                    decode_responses=redis_config.decode_responses,
+                )
+                logger.info("Redis client initialized from config", host=redis_config.host, port=redis_config.port, scheme=scheme)
         return self._client
 
     async def get(self, key: str) -> Optional[Any]:

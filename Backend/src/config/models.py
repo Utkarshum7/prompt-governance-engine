@@ -1,6 +1,6 @@
 """Pydantic models for configuration validation."""
 
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -120,6 +120,39 @@ class PostgreSQLConfig(BaseSettings):
     pool_size: int = Field(default=20, ge=1, le=100, description="Connection pool size")
     max_overflow: int = Field(default=10, ge=0, le=50, description="Max overflow connections")
 
+    @model_validator(mode="before")
+    @classmethod
+    def parse_database_url(cls, data: Any) -> Any:
+        """Parse DATABASE_URL environment variable if available."""
+        import os
+        from urllib.parse import urlparse
+        
+        db_url = os.getenv("DATABASE_URL")
+        if db_url and isinstance(data, dict):
+            # Render and other platforms provide postgres:// instead of postgresql://
+            if db_url.startswith("postgres://"):
+                db_url = db_url.replace("postgres://", "postgresql://", 1)
+            
+            try:
+                parsed = urlparse(db_url)
+                if parsed.hostname:
+                    data["host"] = parsed.hostname
+                if parsed.port:
+                    data["port"] = parsed.port
+                if parsed.path:
+                    data["database"] = parsed.path.lstrip("/")
+                if parsed.username:
+                    data["username"] = parsed.username
+                if parsed.password:
+                    data["password"] = parsed.password
+                
+                # Force require SSL for production database unless host is localhost
+                if parsed.hostname not in ["localhost", "127.0.0.1"]:
+                    data["ssl_mode"] = "require"
+            except Exception:
+                pass
+        return data
+
     @property
     def connection_string(self) -> str:
         """Generate PostgreSQL connection string."""
@@ -138,6 +171,32 @@ class RedisConfig(BaseSettings):
     db: int = Field(default=0, ge=0, le=15, description="Redis database number")
     decode_responses: bool = Field(default=True, description="Decode responses as strings")
 
+    @model_validator(mode="before")
+    @classmethod
+    def parse_redis_url(cls, data: Any) -> Any:
+        """Parse REDIS_URL environment variable if available."""
+        import os
+        from urllib.parse import urlparse
+        
+        redis_url = os.getenv("REDIS_URL")
+        if redis_url and isinstance(data, dict):
+            try:
+                parsed = urlparse(redis_url)
+                if parsed.hostname:
+                    data["host"] = parsed.hostname
+                if parsed.port:
+                    data["port"] = parsed.port
+                if parsed.password:
+                    data["password"] = parsed.password
+                if parsed.path:
+                    try:
+                        data["db"] = int(parsed.path.lstrip("/"))
+                    except ValueError:
+                        pass
+            except Exception:
+                pass
+        return data
+
 
 class QdrantConfig(BaseSettings):
     """Qdrant configuration."""
@@ -145,6 +204,34 @@ class QdrantConfig(BaseSettings):
     host: str = Field(..., description="Qdrant host")
     port: int = Field(default=6333, ge=1, le=65535, description="Qdrant port")
     api_key: Optional[str] = Field(default=None, description="Qdrant API key")
+
+    @model_validator(mode="before")
+    @classmethod
+    def parse_qdrant_url(cls, data: Any) -> Any:
+        """Parse QDRANT_URL environment variable if available."""
+        import os
+        from urllib.parse import urlparse
+        
+        qdrant_url = os.getenv("QDRANT_URL")
+        if qdrant_url and isinstance(data, dict):
+            try:
+                parsed = urlparse(qdrant_url)
+                if parsed.hostname:
+                    data["host"] = parsed.hostname
+                if parsed.port:
+                    data["port"] = parsed.port
+                elif parsed.scheme == "https":
+                    data["port"] = 443
+                else:
+                    data["port"] = 80
+                
+                # Check for QDRANT_API_KEY as well
+                api_key = os.getenv("QDRANT_API_KEY")
+                if api_key:
+                    data["api_key"] = api_key
+            except Exception:
+                pass
+        return data
 
 
 class ElasticsearchConfig(BaseSettings):

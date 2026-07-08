@@ -1,7 +1,7 @@
 """Health check endpoints."""
 
 from datetime import datetime
-from typing import Dict
+from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
@@ -32,42 +32,71 @@ async def health_check() -> Dict[str, str]:
 
 
 @router.get("/ready")
-async def readiness_check(db: AsyncSession = Depends(get_db)) -> Dict[str, str]:
+async def readiness_check(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
     """
-    Readiness check endpoint - verifies database connectivity.
+    Readiness check endpoint - verifies database, redis, and qdrant connectivity.
 
     Args:
         db: Database session
 
     Returns:
-        Readiness status
+        Readiness status details
 
     Raises:
-        HTTPException: If database is not ready
+        HTTPException: If any service is not ready
     """
+    status_details = {
+        "status": "ready",
+        "timestamp": datetime.utcnow().isoformat(),
+        "service": "portkey-prompt-parser",
+        "database": "disconnected",
+        "redis": "disconnected",
+        "qdrant": "disconnected",
+    }
+    
+    # 1. Test database connection (Neon)
     try:
-        # Test database connection
         result = await db.execute(text("SELECT 1"))
         result.scalar()
-
-        settings = get_settings()
-        return {
-            "status": "ready",
-            "timestamp": datetime.utcnow().isoformat(),
-            "service": "portkey-prompt-parser",
-            "database": "connected",
-            "environment": settings.app.environment,
-        }
+        status_details["database"] = "connected"
     except Exception as e:
-        logger.error("Readiness check failed", error=str(e))
+        logger.error("Database readiness check failed", error=str(e))
+        status_details["status"] = "not_ready"
+        status_details["database"] = f"error: {str(e)}"
+
+    # 2. Test Redis connection (Upstash)
+    try:
+        from src.clients.redis import get_redis_client
+        redis_client = get_redis_client()
+        if await redis_client.ping():
+            status_details["redis"] = "connected"
+        else:
+            status_details["status"] = "not_ready"
+            status_details["redis"] = "ping failed"
+    except Exception as e:
+        logger.error("Redis readiness check failed", error=str(e))
+        status_details["status"] = "not_ready"
+        status_details["redis"] = f"error: {str(e)}"
+
+    # 3. Test Qdrant connection (Qdrant Cloud)
+    try:
+        from src.clients.qdrant import get_async_qdrant_client
+        qdrant_client = get_async_qdrant_client()
+        if await qdrant_client.ensure_collection():
+            status_details["qdrant"] = "connected"
+        else:
+            status_details["status"] = "not_ready"
+            status_details["qdrant"] = "collection not ready"
+    except Exception as e:
+        logger.error("Qdrant readiness check failed", error=str(e))
+        status_details["status"] = "not_ready"
+        status_details["qdrant"] = f"error: {str(e)}"
+
+    if status_details["status"] != "ready":
         raise HTTPException(
             status_code=503,
-            detail={
-                "status": "not_ready",
-                "timestamp": datetime.utcnow().isoformat(),
-                "service": "portkey-prompt-parser",
-                "database": "disconnected",
-                "error": str(e),
-            },
+            detail=status_details,
         )
+
+    return status_details
 

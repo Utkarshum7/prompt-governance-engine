@@ -253,3 +253,46 @@ async def get_template_evolution(
             detail={"error": "Failed to get template evolution", "detail": str(e)},
         )
 
+
+@router.post(
+    "/extract/{cluster_id}",
+    response_model=TemplateResponse,
+    responses={404: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
+)
+async def extract_template_manually(
+    cluster_id: UUID,
+    force_model: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+) -> TemplateResponse:
+    """
+    Manually trigger canonical template extraction & versioning for a cluster via the AIOrchestrator.
+    """
+    try:
+        from src.services.orchestrator import AIOrchestrator
+        orchestrator = AIOrchestrator(db)
+        result = await orchestrator.canonicalize_cluster(cluster_id, force_model=force_model)
+        
+        # Retrieve the updated template version record
+        template = await db.get(CanonicalTemplate, result["template_id"])
+        if not template:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={"error": "Failed to retrieve newly extracted template"},
+            )
+            
+        await db.commit()
+        return TemplateResponse.model_validate(template)
+        
+    except ValueError as ve:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": str(ve)},
+        )
+    except Exception as e:
+        logger.error("Error manually extracting template", cluster_id=cluster_id, error=str(e))
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"error": "Failed to extract template", "detail": str(e)},
+        )
+

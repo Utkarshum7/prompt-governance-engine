@@ -188,16 +188,17 @@ async def detect_drift(
                 detail={"error": "Cluster not found", "cluster_id": str(cluster_id)},
             )
 
-        # Run drift detection
-        drift_service = get_drift_detection_service(db)
-        drift_result = await drift_service.detect_drift(
+        # Run drift detection via AIOrchestrator
+        from src.services.orchestrator import AIOrchestrator
+        orchestrator = AIOrchestrator(db)
+        drift_result = await orchestrator.detect_drift(
             cluster_id=cluster_id,
             template_id=template_id,
             recent_prompts_count=recent_prompts_count,
         )
 
         logger.info(
-            "Drift detection completed",
+            "Drift detection completed via Orchestrator",
             cluster_id=cluster_id,
             has_drift=drift_result.get("has_drift"),
             drift_score=drift_result.get("drift_score"),

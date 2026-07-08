@@ -1,0 +1,33 @@
+# Render Infrastructure as Code Configuration
+# Production-grade deployment configuration for AI Prompt Governance Engine
+# Using Native Python environment, connected to Neon PostgreSQL, Upstash Redis, and Qdrant Cloud.
+
+services:
+  - type: web
+    name: prompt-governance-engine
+    env: python
+    buildCommand: "./render-build.sh"
+    startCommand: "./start.sh"
+    plan: free # Can be upgraded to standard/pro for production scale
+    region: oregon # Render's default region
+    envVars:
+      - key: ENV
+        value: prod
+      - key: LOG_LEVEL
+        value: INFO
+      - key: PYTHON_VERSION
+        value: 3.12.3 # Use modern Python 3.12 runtime
+      - key: PORTKEY_API_KEY
+        sync: true # User will enter this in Render dashboard
+      - key: DATABASE_URL
+        sync: true # User will provide Neon connection string
+      - key: REDIS_URL
+        sync: true # User will provide Upstash Redis connection string
+      - key: QDRANT_URL
+        sync: true # User will provide Qdrant Cloud URL (https://...)
+      - key: QDRANT_API_KEY
+        sync: true # User will provide Qdrant Cloud API key
+      - key: AWS_SECRETS_ENABLED
+        value: "false" # Use environment variables instead of AWS Secrets Manager
+      - key: WORKERS
+        value: "4" # Number of Uvicorn workers
