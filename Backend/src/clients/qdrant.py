@@ -15,7 +15,10 @@ logger = get_logger(__name__)
 
 # Collection configuration
 COLLECTION_NAME = "prompt_embeddings"
-VECTOR_SIZE = 1536  # text-embedding-3-small dimension
+# Default vector size (Gemini text-embedding-004 = 768). The effective size is
+# read from settings (models.embedding.dimensions) so it stays a single source
+# of truth alongside the embedding model, and can never silently drift from it.
+DEFAULT_VECTOR_SIZE = 768
 
 
 # Synchronous Qdrant client wrapper removed - using HTTP requests instead
@@ -29,6 +32,12 @@ class AsyncQdrantClientWrapper(IVectorDBProvider):
 
         if not qdrant_config:
             raise ValueError("Qdrant configuration not found")
+
+        # Vector size must match the embedding model's output dimensionality.
+        # Sourced from config so it never drifts from the active embedding model.
+        self.vector_size = getattr(
+            settings.models.embedding, "dimensions", DEFAULT_VECTOR_SIZE
+        )
 
         # Check if QDRANT_URL is set in environment, use it directly if so
         import os
@@ -51,6 +60,7 @@ class AsyncQdrantClientWrapper(IVectorDBProvider):
         logger.info(
             "Async Qdrant HTTP client initialized",
             base_url=self.base_url,
+            vector_size=self.vector_size,
         )
 
     async def ensure_collection(self) -> bool:
@@ -82,7 +92,7 @@ class AsyncQdrantClientWrapper(IVectorDBProvider):
 
                 collection_config = {
                     "vectors": {
-                        "size": VECTOR_SIZE,
+                        "size": self.vector_size,
                         "distance": "Cosine"
                     },
                     "hnsw_config": {

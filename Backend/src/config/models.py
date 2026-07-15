@@ -27,6 +27,13 @@ class EmbeddingModelConfig(BaseSettings):
         default="text-embedding-004",
         description="Fallback embedding model for long prompts",
     )
+    dimensions: int = Field(
+        default=768,
+        ge=1,
+        le=8192,
+        description="Embedding vector dimensionality (text-embedding-004 = 768). "
+        "Must match the vector size of the Qdrant collection.",
+    )
     batch_size: int = Field(default=100, ge=1, le=200, description="Batch size for embeddings")
 
 

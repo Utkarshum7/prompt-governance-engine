@@ -25,6 +25,9 @@ models:
     primary: "text-embedding-004"
     # Fallback embedding model for long/complex prompts (>8k tokens)
     fallback: "text-embedding-004"
+    # Embedding vector dimensionality (text-embedding-004 = 768).
+    # MUST match the Qdrant collection's vector size.
+    dimensions: 768
     # Batch size for embedding generation (50-200 recommended)
     batch_size: 100
   
