@@ -142,35 +142,61 @@ async def startup_event():
     # Note: Qdrant collection creation is now done lazily when first needed
     logger.info("Application startup complete - Qdrant collection will be created on first use")
 
-    # Start the async generic Job Scheduler
+    # Start the async generic Job Scheduler - but only on the worker process
+    # that wins leadership. uvicorn --workers N runs N separate OS processes;
+    # without this guard each one would start its own scheduler and multiply
+    # background job execution (and Gemini API cost) by N.
     from src.services.scheduler import (
         get_job_scheduler,
         run_periodic_drift_detection,
         run_periodic_evaluation_metrics,
         run_periodic_cache_cleanup,
         run_periodic_dataset_refresh,
+        try_acquire_scheduler_leadership,
+        start_leadership_renewal,
     )
-    
-    scheduler = get_job_scheduler()
-    scheduler.register("drift_detection", run_periodic_drift_detection, 21600)  # every 6 hours
-    scheduler.register("evaluation_metrics", run_periodic_evaluation_metrics, 43200)  # every 12 hours
-    scheduler.register("cache_cleanup", run_periodic_cache_cleanup, 86400)  # every 24 hours
-    scheduler.register("dataset_refresh", run_periodic_dataset_refresh, 3600)  # every 1 hour
-    
-    scheduler.start()
-    app.state.scheduler = scheduler
-    logger.info("Generic Job Scheduler started with registered background tasks")
+
+    app.state.scheduler = None
+    app.state.leadership_renewal_task = None
+
+    is_leader = await try_acquire_scheduler_leadership()
+    if is_leader:
+        scheduler = get_job_scheduler()
+        scheduler.register("drift_detection", run_periodic_drift_detection, 21600)  # every 6 hours
+        scheduler.register("evaluation_metrics", run_periodic_evaluation_metrics, 43200)  # every 12 hours
+        scheduler.register("cache_cleanup", run_periodic_cache_cleanup, 86400)  # every 24 hours
+        scheduler.register("dataset_refresh", run_periodic_dataset_refresh, 3600)  # every 1 hour
+
+        scheduler.start()
+        app.state.scheduler = scheduler
+        app.state.leadership_renewal_task = start_leadership_renewal()
+        logger.info("This worker acquired scheduler leadership - background jobs started")
+    else:
+        logger.info(
+            "Scheduler leadership held by another worker - "
+            "skipping background jobs in this worker"
+        )
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """Application shutdown event."""
     logger.info("Application shutting down")
-    
-    # Stop periodic background scheduled jobs
-    if hasattr(app.state, "scheduler"):
+
+    # Stop periodic background scheduled jobs (only present on the leader worker)
+    if getattr(app.state, "scheduler", None) is not None:
         await app.state.scheduler.stop()
         logger.info("Scheduler background tasks stopped successfully")
+
+    # Stop the leadership-lock renewal loop (only present on the leader worker)
+    renewal_task = getattr(app.state, "leadership_renewal_task", None)
+    if renewal_task is not None:
+        renewal_task.cancel()
+        try:
+            await renewal_task
+        except asyncio.CancelledError:
+            pass
+        logger.info("Scheduler leadership renewal loop stopped")
 
 
 @app.get("/")

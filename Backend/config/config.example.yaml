@@ -76,8 +76,10 @@ aws:
   
   # AWS Secrets Manager configuration
   secrets_manager:
-    # Enable AWS Secrets Manager integration
-    enabled: true
+    # Enable AWS Secrets Manager integration.
+    # Leave disabled for Render deployments (which use Render's own env vars /
+    # dashboard secrets, not AWS). Only enable for an AWS/ECS deployment.
+    enabled: false
     # Secret name in AWS Secrets Manager
     secret_name: "portkey-prompt-parser/secrets"
 

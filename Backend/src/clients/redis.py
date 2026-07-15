@@ -150,6 +150,49 @@ class RedisClient(ICache):
             logger.error("Redis exists error", key=key, error=str(e))
             return False
 
+    async def acquire_lock(self, key: str, ttl: int) -> bool:
+        """
+        Atomically acquire a distributed lock (SET NX EX).
+
+        Args:
+            key: Lock key
+            ttl: Lock lifetime in seconds. The holder must renew before expiry
+                 to keep the lock; if the holder dies, the lock self-expires.
+
+        Returns:
+            True if this call acquired the lock, False if another holder has it.
+        """
+        try:
+            client = await self._get_client()
+            acquired = await client.set(key, "1", nx=True, ex=ttl)
+            return bool(acquired)
+        except Exception as e:
+            logger.error("Redis acquire_lock error", key=key, error=str(e))
+            return False
+
+    async def renew_lock(self, key: str, ttl: int) -> bool:
+        """
+        Renew a lock this caller already holds by resetting its TTL.
+
+        Note: this does not verify ownership (no lock token) — acceptable for a
+        single-process-per-lock use case like scheduler leadership, where only
+        the original holder's renewal loop calls this.
+
+        Args:
+            key: Lock key
+            ttl: New TTL in seconds
+
+        Returns:
+            True if the key exists and was renewed, False otherwise
+        """
+        try:
+            client = await self._get_client()
+            renewed = await client.expire(key, ttl)
+            return bool(renewed)
+        except Exception as e:
+            logger.error("Redis renew_lock error", key=key, error=str(e))
+            return False
+
     async def ping(self) -> bool:
         """
         Ping Redis server.

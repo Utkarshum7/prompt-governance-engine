@@ -6,6 +6,14 @@ from structlog import get_logger
 
 logger = get_logger("ai.governance.scheduler")
 
+# Distributed leadership lock so only ONE worker process runs the periodic
+# background jobs. `uvicorn --workers N` forks N separate OS processes, each
+# running its own copy of the FastAPI app - an in-memory flag cannot
+# coordinate between them, so leadership is arbitrated via Redis instead.
+LEADER_LOCK_KEY = "scheduler:leader_lock"
+LEADER_LOCK_TTL_SECONDS = 90
+LEADER_RENEWAL_INTERVAL_SECONDS = 30
+
 
 class ScheduledJob:
     """Represents a scheduled job task definition."""
@@ -97,6 +105,48 @@ def get_job_scheduler() -> JobScheduler:
     if _scheduler is None:
         _scheduler = JobScheduler()
     return _scheduler
+
+
+async def try_acquire_scheduler_leadership() -> bool:
+    """
+    Attempt to become the sole scheduler leader across all worker processes.
+
+    Only the worker that wins this Redis-backed lock should start the
+    periodic job scheduler. All other workers keep serving requests but skip
+    background jobs entirely, so drift detection / evaluation / cleanup run
+    exactly once regardless of WORKERS.
+
+    Returns:
+        True if this worker acquired leadership, False otherwise.
+    """
+    from src.clients.redis import get_redis_client
+
+    redis_client = get_redis_client()
+    acquired = await redis_client.acquire_lock(LEADER_LOCK_KEY, LEADER_LOCK_TTL_SECONDS)
+    return acquired
+
+
+async def _leadership_renewal_loop():
+    """Keep this worker's leadership lock alive for as long as it is running."""
+    from src.clients.redis import get_redis_client
+
+    redis_client = get_redis_client()
+    try:
+        while True:
+            await asyncio.sleep(LEADER_RENEWAL_INTERVAL_SECONDS)
+            renewed = await redis_client.renew_lock(LEADER_LOCK_KEY, LEADER_LOCK_TTL_SECONDS)
+            if not renewed:
+                logger.warning(
+                    "Scheduler leadership lock renewal failed; lock may have expired",
+                )
+    except asyncio.CancelledError:
+        logger.info("Scheduler leadership renewal loop cancelled")
+        raise
+
+
+def start_leadership_renewal() -> asyncio.Task:
+    """Start the background task that keeps this worker's leadership lock alive."""
+    return asyncio.create_task(_leadership_renewal_loop())
 
 
 # Standard scheduled job callbacks

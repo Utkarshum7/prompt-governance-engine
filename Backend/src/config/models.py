@@ -347,6 +347,19 @@ class AppConfig(BaseSettings):
         default_factory=ProcessingConfig, description="Processing configuration"
     )
 
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_environment(cls, data: Any) -> Any:
+        """Normalize common environment name aliases (e.g. Render's ENV=production)."""
+        if isinstance(data, dict) and isinstance(data.get("environment"), str):
+            aliases = {
+                "production": "prod",
+                "development": "dev",
+            }
+            normalized = data["environment"].strip().lower()
+            data["environment"] = aliases.get(normalized, normalized)
+        return data
+
 
 class CloudWatchConfig(BaseSettings):
     """CloudWatch configuration."""

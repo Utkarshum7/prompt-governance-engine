@@ -28,6 +28,11 @@ class ICache(ABC):
         pass
 
     @abstractmethod
+    async def acquire_lock(self, key: str, ttl: int) -> bool:
+        """Atomically acquire a distributed lock. Returns True if this caller now holds it."""
+        pass
+
+    @abstractmethod
     async def ping(self) -> bool:
         """Ping the cache provider for health check."""
         pass
