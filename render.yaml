@@ -20,4 +20,9 @@ services:
       - key: AWS_SECRETS_ENABLED
         value: "false"
       - key: WORKERS
-        value: "4"
+        # Kept low for the free plan's ~512MB RAM and to bound total Postgres
+        # connections (pool_size=20 + max_overflow=10 per worker on Neon).
+        # The scheduler leadership lock makes >1 worker safe correctness-wise;
+        # this value is about memory/connection headroom, not correctness.
+        # Raise if upgrading to a paid Render plan with more RAM.
+        value: "2"
